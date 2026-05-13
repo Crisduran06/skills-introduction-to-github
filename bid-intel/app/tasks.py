@@ -28,15 +28,15 @@ SOURCE_SEED_DATA = [
     dict(name="Sunnyvale PlanetBids", key="sunnyvale", base_url="https://pbsystem.planetbids.com", platform_type="planetbids", status="stub", scrape_allowed=False, auth_required=True, notes="PlanetBids portal — login required for detail. Manual import supported."),
     dict(name="San Mateo County Public Works", key="san_mateo_county", base_url="https://www.smcgov.org/public-works/bids", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
     dict(name="Alameda County Public Works", key="alameda_county", base_url="https://www.acgov.org/gsa/purchasing", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
-    dict(name="EBMUD Construction Bids", key="ebmud", base_url="https://www.ebmud.com/about-ebmud/business/bids-rfps/", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
+    dict(name="EBMUD Construction Bids", key="ebmud", base_url="https://construction-bids.ebmud.com/CurrentorFutureBid.aspx?BidMode=Current", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, notes="ASP.NET WebForms — static HTML table, no login required."),
     dict(name="Valley Water PlanetBids", key="valley_water", base_url="https://pbsystem.planetbids.com/portal/35898/portal-detail", platform_type="planetbids", status="stub", scrape_allowed=False, auth_required=True, notes="PlanetBids — planholder detail requires login."),
-    dict(name="Port of Oakland", key="port_oakland", base_url="https://www.portofoakland.com/business/doing-business/procurement/", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
-    dict(name="SFPUC / SF Bids", key="sfpuc", base_url="https://sfwater.org/index.aspx?page=124", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
-    dict(name="SF Public Works", key="sf_public_works", base_url="https://sfpublicworks.org/doing-business", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
-    dict(name="Oakland Capital Contracts", key="oakland", base_url="https://www.oaklandca.gov/topics/city-contracts", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
+    dict(name="Port of Oakland", key="port_oakland", base_url="https://www.portofoakland.com/business/bids-rfp-center/engineering-bids-rfps-rfqs", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, notes="WordPress CMS. BidNet links skipped (requires login)."),
+    dict(name="SFPUC / SF Bids", key="sfpuc", base_url="https://webapps.sfpuc.org/bids/bidlist.aspx?bidtype=5", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, notes="ASP.NET WebForms — shows contract numbers and dollar estimates publicly."),
+    dict(name="SF Public Works", key="sf_public_works", base_url="https://bidopportunities.apps.sfdpw.org/", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, notes="ASP.NET MVC — shows estimates. Document download requires BSM login."),
+    dict(name="Oakland Capital Contracts", key="oakland", base_url="https://apps.oaklandca.gov/ContractOpportunities/Opportunities", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, notes="May be JS-rendered — returns empty if SPA shell detected."),
     dict(name="SFO Procurement", key="sfo", base_url="https://www.flysfo.com/business/contracts-procurement", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
-    dict(name="BART Procurement", key="bart", base_url="https://www.bart.gov/about/business/bids", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
-    dict(name="VTA Procurement", key="vta", base_url="https://www.vta.org/business/procurement", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
+    dict(name="BART Procurement", key="bart", base_url="https://www.bart.gov/about/business/procurement/contractsout", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, supports_archives=True, notes="Drupal CMS — static HTML, no login required."),
+    dict(name="VTA Procurement", key="vta", base_url="https://procurement.opengov.com/portal/vta", platform_type="opengov", status="stub", scrape_allowed=False, auth_required=False, notes="OpenGov React SPA — requires Playwright or API interception. Manual import supported."),
     dict(name="Santa Clara County Procurement", key="santa_clara_county", base_url="https://www.sccgov.org/sites/oa/Pages/Procurement.aspx", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
     dict(name="BXSCCO Weekly Bidding PDF", key="bxscco", base_url="https://www.bxscco.com", platform_type="pdf_bulletin", status="stub", scrape_allowed=False, auth_required=True, notes="Weekly PDF bulletin — membership may be required."),
     dict(name="Bay Area Builders Exchange / CalBX", key="builders_exchange", base_url="https://www.calbx.com", platform_type="pdf_bulletin", status="stub", scrape_allowed=False, auth_required=True, notes="CalBX requires membership. Check public listing availability."),
@@ -48,6 +48,24 @@ def get_connector(key: str, fixture: bool = False):
     if key == "mountain_view":
         from app.connectors.mountain_view import MountainViewConnector
         return MountainViewConnector(fixture=fixture)
+    if key == "ebmud":
+        from app.connectors.ebmud import EbmudConnector
+        return EbmudConnector()
+    if key == "bart":
+        from app.connectors.bart import BartConnector
+        return BartConnector()
+    if key == "sfpuc":
+        from app.connectors.sfpuc import SfpucConnector
+        return SfpucConnector()
+    if key == "sf_public_works":
+        from app.connectors.sfpuc import SfPublicWorksConnector
+        return SfPublicWorksConnector()
+    if key == "port_oakland":
+        from app.connectors.port_oakland import PortOaklandConnector
+        return PortOaklandConnector()
+    if key == "oakland":
+        from app.connectors.oakland import OaklandConnector
+        return OaklandConnector()
     return None
 
 
