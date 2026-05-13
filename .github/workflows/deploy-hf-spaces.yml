@@ -1,0 +1,32 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches:
+      - claude/bid-tracking-website-3Veq9
+    paths:
+      - 'bid-intel/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push bid-intel to HF Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ secrets.HF_SPACE }}
+        run: |
+          cd bid-intel
+          git init
+          git config user.email "ci@github.com"
+          git config user.name "GitHub Actions"
+          git add -A
+          git commit -m "Deploy from GitHub Actions"
+          git push --force \
+            "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" \
+            HEAD:main
