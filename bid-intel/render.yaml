@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: bid-intel
+    runtime: python
+    plan: free
+    rootDir: bid-intel
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: AUTOSEED_FIXTURES
+        value: "true"

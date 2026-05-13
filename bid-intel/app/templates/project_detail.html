@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}{{ project.project_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="/" style="color:var(--muted);font-size:13px">← Back to Dashboard</a>
+  <h1 style="margin-top:8px">{{ project.project_name }}</h1>
+  <div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">
+    <span class="badge badge-{{ project.status }}">{{ project.status.replace('_',' ') }}</span>
+    {% if project.relevance_score %}
+    <span class="score score-{{ project.relevance_score }}" title="{{ project.relevance_reason or '' }}">{{ project.relevance_score }}</span>
+    <span style="color:var(--muted);font-size:12px">{{ project.relevance_reason }}</span>
+    {% endif %}
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">
+  <div class="card">
+    <h3>Project Info</h3>
+    <table style="font-size:13px">
+      <tr><td style="color:var(--muted);width:160px;padding:5px 0">Agency / Owner</td><td>{{ project.agency_owner or '—' }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0">City</td><td>{{ project.location_city or '—' }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0">County</td><td>{{ project.location_county or '—' }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0">Bid Due Date</td><td>{{ project.bid_due_date or '—' }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0">Pre-Bid Date</td><td>{{ project.prebid_date or '—' }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0">Engineer's Estimate</td><td style="font-weight:600">{{ project.engineer_estimate | currency }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0">Est. Value</td><td>{{ project.estimate_value | currency }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0">External ID</td><td style="font-family:monospace">{{ project.external_id or '—' }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0">Created</td><td>{{ project.created_at.strftime('%Y-%m-%d') if project.created_at else '—' }}</td></tr>
+    </table>
+    {% if project.description %}
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Description</div>
+      <div style="line-height:1.7;color:var(--text)">{{ project.description }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card" style="margin-bottom:12px">
+      <h3>Links</h3>
+      {% if project.source_url %}<div><a href="{{ project.source_url }}" target="_blank">Project Page ↗</a></div>{% endif %}
+      {% if project.documents_url %}<div><a href="{{ project.documents_url }}" target="_blank">Plans &amp; Specs ↗</a></div>{% endif %}
+      {% if project.planholders_url %}<div><a href="{{ project.planholders_url }}" target="_blank">Planholder List ↗</a></div>{% endif %}
+      {% if project.results_url %}<div><a href="{{ project.results_url }}" target="_blank">Bid Results ↗</a></div>{% endif %}
+      {% if project.award_url %}<div><a href="{{ project.award_url }}" target="_blank">Award Info ↗</a></div>{% endif %}
+      {% if not (project.source_url or project.documents_url) %}<div style="color:var(--muted)">No links available</div>{% endif %}
+    </div>
+
+    {% if decision %}
+    <div class="card">
+      <h3>Decision</h3>
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px">{{ decision.decision.replace('_',' ').title() }}</div>
+      {% if decision.assigned_to %}<div style="color:var(--muted)">Assigned: {{ decision.assigned_to }}</div>{% endif %}
+      {% if decision.follow_up_date %}<div style="color:var(--muted)">Follow-up: {{ decision.follow_up_date }}</div>{% endif %}
+      {% if decision.reason %}<div style="color:var(--muted);margin-top:6px">{{ decision.reason }}</div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if analytics %}
+<div class="card section">
+  <h2>Bid Analytics</h2>
+  <div class="stat-grid" style="margin-bottom:0">
+    <div class="stat-card"><div class="label">Planholders</div><div class="value">{{ analytics.planholders_count or '—' }}</div></div>
+    <div class="stat-card"><div class="label">Bidders</div><div class="value accent">{{ analytics.actual_bidders_count or '—' }}</div></div>
+    <div class="stat-card"><div class="label">Participation Rate</div><div class="value">{% if analytics.bid_participation_rate %}{{ "%.0f" | format(analytics.bid_participation_rate) }}%{% else %}—{% endif %}</div></div>
+    <div class="stat-card"><div class="label">Low Bid</div><div class="value green">{{ analytics.low_bid_amount | currency }}</div></div>
+    <div class="stat-card"><div class="label">2nd Bid</div><div class="value">{{ analytics.second_bid_amount | currency }}</div></div>
+    <div class="stat-card"><div class="label">High Bid</div><div class="value">{{ analytics.high_bid_amount | currency }}</div></div>
+    <div class="stat-card"><div class="label">Avg Bid</div><div class="value">{{ analytics.average_bid_amount | currency }}</div></div>
+    <div class="stat-card"><div class="label">Low→2nd Spread</div><div class="value yellow">{{ analytics.low_to_second_delta_percent | pct }}</div></div>
+    <div class="stat-card"><div class="label">Low→High Spread</div><div class="value">{{ analytics.low_to_high_delta_percent | pct }}</div></div>
+    {% if analytics.engineer_estimate %}
+    <div class="stat-card"><div class="label">vs Engineer Est.</div><div class="value {% if analytics.low_bid_vs_engineer_estimate_amount and analytics.low_bid_vs_engineer_estimate_amount < 0 %}green{% else %}yellow{% endif %}">{{ analytics.low_bid_vs_engineer_estimate_percent | pct }}</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if bid_results %}
+<div class="card section">
+  <h2>Bid Results</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Bidder</th>
+          <th>Bid Amount</th>
+          <th>Δ from Low</th>
+          <th>Δ from Low %</th>
+          <th>Δ from Prev %</th>
+          <th>Δ from EE %</th>
+          <th>Awarded</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in bid_results %}
+        <tr style="{% if r.is_low_bidder %}background:rgba(34,197,94,.05){% endif %}">
+          <td style="text-align:center;font-weight:700">{{ r.bid_rank or '—' }}</td>
+          <td>
+            {% if r.company_id and r.company_id in company_map %}
+              {{ company_map[r.company_id] }}
+            {% else %}—{% endif %}
+            {% if r.is_low_bidder %}<span class="badge badge-open" style="margin-left:6px">Low Bid</span>{% endif %}
+          </td>
+          <td style="font-weight:600;white-space:nowrap">{{ r.bid_amount | currency }}</td>
+          <td class="{% if r.delta_from_low_amount and r.delta_from_low_amount > 0 %}delta-pos{% elif r.delta_from_low_amount == 0 %}delta-zero{% endif %}">
+            {{ r.delta_from_low_amount | currency if r.delta_from_low_amount else '—' }}
+          </td>
+          <td class="{% if r.delta_from_low_percent and r.delta_from_low_percent > 0 %}delta-pos{% endif %}">
+            {{ r.delta_from_low_percent | pct }}
+          </td>
+          <td class="{% if r.delta_from_previous_percent and r.delta_from_previous_percent > 0 %}delta-pos{% endif %}">
+            {{ r.delta_from_previous_percent | pct }}
+          </td>
+          <td class="{% if r.delta_from_engineer_estimate_percent %}{% if r.delta_from_engineer_estimate_percent < 0 %}delta-neg{% else %}delta-pos{% endif %}{% endif %}">
+            {{ r.delta_from_engineer_estimate_percent | pct }}
+          </td>
+          <td>{% if r.is_awarded %}<span class="badge badge-awarded">Awarded</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if planholders %}
+<div class="card section">
+  <h2>Planholders ({{ planholders|length }})</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Company</th><th>Contact</th><th>Phone</th><th>Email</th><th>Date Added</th></tr></thead>
+      <tbody>
+        {% for ph in planholders %}
+        <tr>
+          <td>{% if ph.company_id and ph.company_id in company_map %}{{ company_map[ph.company_id] }}{% else %}{{ ph.listed_as or '—' }}{% endif %}</td>
+          <td>{{ ph.contact_name or '—' }}</td>
+          <td>{{ ph.contact_phone or '—' }}</td>
+          <td>{{ ph.contact_email or '—' }}</td>
+          <td>{{ ph.date_added or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if addenda %}
+<div class="card section">
+  <h2>Addenda</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Title</th><th>Date</th><th>Link</th></tr></thead>
+      <tbody>
+        {% for a in addenda %}
+        <tr>
+          <td>{{ a.addendum_number or '—' }}</td>
+          <td>{{ a.title or '—' }}</td>
+          <td>{{ a.posted_date or '—' }}</td>
+          <td>{% if a.url %}<a href="{{ a.url }}" target="_blank">↗</a>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if notes %}
+<div class="card section">
+  <h2>Notes</h2>
+  {% for note in notes %}
+  <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+    <div style="color:var(--muted);font-size:11px;margin-bottom:4px">{{ note.created_at.strftime('%Y-%m-%d %H:%M') if note.created_at else '' }} {% if note.created_by %}· {{ note.created_by }}{% endif %}</div>
+    <div>{{ note.note }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

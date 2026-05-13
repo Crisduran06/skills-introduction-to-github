@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Sources{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Bid Sources</h1>
+  <p>All configured data sources for Bay Area government construction bids</p>
+</div>
+
+<div class="card" style="padding:0">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th>Platform</th>
+          <th>Status</th>
+          <th>Current</th>
+          <th>Plans</th>
+          <th>Results</th>
+          <th>Awards</th>
+          <th>Archive</th>
+          <th>Auth</th>
+          <th>Last Checked</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sources %}
+        <tr>
+          <td>
+            <div style="font-weight:500">{{ s.name }}</div>
+            {% if s.base_url %}
+            <div style="font-size:11px;margin-top:2px"><a href="{{ s.base_url }}" target="_blank" style="color:var(--muted)">{{ s.base_url[:50] }}{% if s.base_url|length > 50 %}…{% endif %}</a></div>
+            {% endif %}
+          </td>
+          <td><span class="tag">{{ s.platform_type }}</span></td>
+          <td>
+            <span class="status-dot dot-{{ s.status }}"></span>
+            <span style="font-size:12px">{{ s.status.replace('_',' ') }}</span>
+          </td>
+          <td style="text-align:center">{% if s.supports_current_bids %}<span class="check">✓</span>{% else %}<span class="cross">—</span>{% endif %}</td>
+          <td style="text-align:center">{% if s.supports_planholders %}<span class="check">✓</span>{% else %}<span class="cross">—</span>{% endif %}</td>
+          <td style="text-align:center">{% if s.supports_bid_results %}<span class="check">✓</span>{% else %}<span class="cross">—</span>{% endif %}</td>
+          <td style="text-align:center">{% if s.supports_awards %}<span class="check">✓</span>{% else %}<span class="cross">—</span>{% endif %}</td>
+          <td style="text-align:center">{% if s.supports_archives %}<span class="check">✓</span>{% else %}<span class="cross">—</span>{% endif %}</td>
+          <td style="text-align:center">{% if s.auth_required %}<span style="color:var(--orange)">🔒</span>{% else %}<span class="check">✓</span>{% endif %}</td>
+          <td style="color:var(--muted);font-size:12px;white-space:nowrap">{{ s.last_checked_at.strftime('%m/%d %H:%M') if s.last_checked_at else 'Never' }}</td>
+          <td style="color:var(--muted);font-size:12px;max-width:200px">{{ s.notes or s.archive_notes or '' }}</td>
+          <td>
+            <button class="secondary" style="font-size:11px;padding:4px 10px" onclick="debugSource('{{ s.key }}')">Debug</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="debug-panel" class="card" style="display:none;margin-top:16px">
+  <h2 id="debug-title">Debug Output</h2>
+  <pre id="debug-output" style="font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--text);background:var(--bg);padding:14px;border-radius:7px;overflow-x:auto;margin-top:10px"></pre>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+async function debugSource(key) {
+  showToast(`Debugging source: ${key}…`);
+  const r = await fetch(`/api/debug-source/${key}`);
+  const data = await r.json();
+  document.getElementById('debug-panel').style.display = '';
+  document.getElementById('debug-title').textContent = `Debug: ${key}`;
+  document.getElementById('debug-output').textContent = JSON.stringify(data, null, 2);
+  document.getElementById('debug-panel').scrollIntoView({behavior:'smooth'});
+}
+</script>
+{% endblock %}

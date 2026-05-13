@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Analytics &amp; Trends</h1>
+  <p>Bidding patterns across Bay Area government construction projects</p>
+</div>
+
+<div class="actions">
+  <button onclick="calcAnalytics()">📊 Recalculate Analytics</button>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="label">Total Projects</div><div class="value accent">{{ total_projects }}</div></div>
+  <div class="stat-card"><div class="label">Bid Results Tracked</div><div class="value">{{ total_bid_results }}</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+  <div class="card">
+    <h2>Top Bidders</h2>
+    {% if trends.top_bidders %}
+    <table>
+      <thead><tr><th>#</th><th>Company</th><th>Total Bids</th></tr></thead>
+      <tbody>
+        {% for r in trends.top_bidders %}
+        <tr>
+          <td style="color:var(--muted)">{{ loop.index }}</td>
+          <td>{{ r.name }}</td>
+          <td><span style="font-weight:600;color:var(--accent)">{{ r.bid_count }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty" style="padding:24px"><div class="icon">📊</div><div>No bid data yet</div></div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Top Winners</h2>
+    {% if trends.top_winners %}
+    <table>
+      <thead><tr><th>#</th><th>Company</th><th>Awards</th></tr></thead>
+      <tbody>
+        {% for r in trends.top_winners %}
+        <tr>
+          <td style="color:var(--muted)">{{ loop.index }}</td>
+          <td>{{ r.name }}</td>
+          <td><span style="font-weight:600;color:var(--green)">{{ r.win_count }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty" style="padding:24px"><div class="icon">🏆</div><div>No award data yet</div></div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Top Planholders</h2>
+    {% if trends.top_planholders %}
+    <table>
+      <thead><tr><th>#</th><th>Company</th><th>Plans Pulled</th></tr></thead>
+      <tbody>
+        {% for r in trends.top_planholders %}
+        <tr>
+          <td style="color:var(--muted)">{{ loop.index }}</td>
+          <td>{{ r.name }}</td>
+          <td><span style="font-weight:600">{{ r.ph_count }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty" style="padding:24px"><div class="icon">📋</div><div>No planholder data yet</div></div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Plans But No Bid</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Companies that pulled plans but didn't submit bids</p>
+    {% if trends.non_bidders %}
+    <table>
+      <thead><tr><th>#</th><th>Company</th><th>Times</th></tr></thead>
+      <tbody>
+        {% for r in trends.non_bidders %}
+        <tr>
+          <td style="color:var(--muted)">{{ loop.index }}</td>
+          <td>{{ r.name }}</td>
+          <td><span style="font-weight:600;color:var(--orange)">{{ r.count }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty" style="padding:24px"><div class="icon">📭</div><div>No participation data yet</div></div>
+    {% endif %}
+  </div>
+</div>
+
+{% if trends.agency_stats %}
+<div class="card">
+  <h2>Agency Statistics</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Agency</th>
+          <th>Projects</th>
+          <th>Avg Bidders</th>
+          <th>Avg Planholders</th>
+          <th>Avg Participation %</th>
+          <th>Avg Low→2nd %</th>
+          <th>Avg Low→High %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in trends.agency_stats %}
+        <tr>
+          <td style="font-weight:500">{{ r.agency }}</td>
+          <td>{{ r.project_count }}</td>
+          <td>{{ r.avg_bidders or '—' }}</td>
+          <td>{{ r.avg_planholders or '—' }}</td>
+          <td>{% if r.avg_participation %}{{ "%.0f"|format(r.avg_participation) }}%{% else %}—{% endif %}</td>
+          <td class="delta-pos">{% if r.avg_low_to_second_pct %}+{{ r.avg_low_to_second_pct }}%{% else %}—{% endif %}</td>
+          <td class="delta-pos">{% if r.avg_low_to_high_pct %}+{{ r.avg_low_to_high_pct }}%{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

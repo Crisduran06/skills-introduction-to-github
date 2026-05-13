@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Manual Import{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Manual Import</h1>
+  <p>Paste raw text from a bid website, email, planholder list, bid tab, or award notice.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:3fr 2fr;gap:16px">
+  <div class="card">
+    <h2>Paste Raw Text</h2>
+    <div style="margin-bottom:12px">
+      <label style="color:var(--muted);font-size:12px;display:block;margin-bottom:6px">Import Type</label>
+      <select id="import-type" style="width:100%">
+        <option value="auto">Auto-detect</option>
+        <option value="bid_page">Bid Website</option>
+        <option value="email">Bid Alert Email</option>
+        <option value="planholder">Planholder List</option>
+        <option value="bid_tab">Bid Tab / Results</option>
+        <option value="award">Award Notice</option>
+        <option value="pdf">PDF Text Extract</option>
+      </select>
+    </div>
+    <textarea id="raw-text" rows="18" placeholder="Paste text here…&#10;&#10;Examples:&#10;• Copy from a bid website listing&#10;• Forward a bid alert email and paste the body&#10;• Copy a planholder list table&#10;• Paste PDF text from a bid tab&#10;• Copy an award notice"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="submitImport()">⬆ Import</button>
+      <button class="secondary" onclick="clearForm()">Clear</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="card" style="margin-bottom:12px">
+      <h2>Import Tips</h2>
+      <ul style="color:var(--muted);font-size:13px;line-height:2;list-style:none">
+        <li>📋 <strong>Bid websites</strong> — Copy the project listing page</li>
+        <li>📧 <strong>Email alerts</strong> — Paste the email body directly</li>
+        <li>👥 <strong>Planholder lists</strong> — Copy the table or list</li>
+        <li>📊 <strong>Bid tabs</strong> — Paste from PDF or webpage</li>
+        <li>🏆 <strong>Award notices</strong> — Include contractor and amount</li>
+      </ul>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);color:var(--muted);font-size:12px">
+        The parser will extract: project name, agency, city, bid due date, pre-bid date, estimate, URL, bidders, amounts, and awarded contractor.
+      </div>
+    </div>
+
+    <div class="card" id="result-panel" style="display:none">
+      <h2>Import Result</h2>
+      <div id="result-body"></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+async function submitImport() {
+  const raw = document.getElementById('raw-text').value.trim();
+  if (!raw) { showToast('Paste some text first.'); return; }
+  const type = document.getElementById('import-type').value;
+  showToast('Importing…');
+  const data = await apiPost('/api/manual-import', {raw_text: raw, import_type: type});
+  const panel = document.getElementById('result-panel');
+  const body = document.getElementById('result-body');
+  panel.style.display = '';
+
+  if (data.error) {
+    body.innerHTML = `<div style="color:var(--red)">${data.error}</div>`;
+    return;
+  }
+
+  const scoreColors = {5:'var(--score5)',4:'var(--score4)',3:'var(--score3)',2:'var(--score2)',1:'var(--score1)'};
+  const scoreColor = scoreColors[data.relevance_score] || 'var(--muted)';
+
+  body.innerHTML = `
+    <div style="margin-bottom:10px">
+      <div style="font-weight:600;margin-bottom:4px"><a href="/projects/${data.project_id}">${data.project_name}</a></div>
+      <div style="color:var(--muted);font-size:12px">${data.created ? 'New project created' : 'Merged with existing project'}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+      <div><span style="color:var(--muted)">Relevance Score</span><br><span style="color:${scoreColor};font-weight:700;font-size:20px">${data.relevance_score || '?'}</span></div>
+      <div><span style="color:var(--muted)">Bid Results</span><br><span style="font-weight:700">${data.bid_results_saved}</span></div>
+      <div><span style="color:var(--muted)">Planholders</span><br><span>${data.planholders_parsed}</span></div>
+      <div><span style="color:var(--muted)">Project ID</span><br><span style="font-family:monospace">#${data.project_id}</span></div>
+    </div>
+    <div style="margin-top:10px;padding:8px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--muted)">${data.relevance_reason || ''}</div>
+    <div style="margin-top:10px">
+      <a href="/projects/${data.project_id}" class="btn" style="font-size:12px">View Project →</a>
+    </div>
+  `;
+  showToast('Import complete!');
+}
+
+function clearForm() {
+  document.getElementById('raw-text').value = '';
+  document.getElementById('result-panel').style.display = 'none';
+}
+</script>
+{% endblock %}

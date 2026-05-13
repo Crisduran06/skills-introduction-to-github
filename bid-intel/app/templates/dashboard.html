@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Bid Opportunities</h1>
+  <p>Bay Area government construction bids — electrical &amp; MEP scope</p>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="label">Open Bids</div>
+    <div class="value accent">{{ total_open }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Due This Week</div>
+    <div class="value yellow">{{ due_this_week }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">High Relevance (4–5)</div>
+    <div class="value green">{{ high_relevance }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Results This Week</div>
+    <div class="value">{{ results_this_week }}</div>
+  </div>
+</div>
+
+<div class="actions">
+  <button onclick="loadFixtures()">⚡ Load Sample Data (Fixtures)</button>
+  <button class="secondary" onclick="fetchLive()">🌐 Fetch Live Sources</button>
+  <button class="secondary" onclick="calcAnalytics()">📊 Calculate Analytics</button>
+  <a href="/api/export-csv" class="btn secondary" download>⬇ Export CSV</a>
+</div>
+
+{% if projects %}
+<div class="card" style="padding:0">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Score</th>
+          <th>Project</th>
+          <th>Agency</th>
+          <th>City</th>
+          <th>Bid Due</th>
+          <th>Estimate</th>
+          <th>Status</th>
+          <th>Source</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in projects %}
+        <tr>
+          <td style="text-align:center">
+            {% if p.relevance_score %}
+            <span class="score score-{{ p.relevance_score }}" title="{{ p.relevance_reason or '' }}">{{ p.relevance_score }}</span>
+            {% else %}
+            <span class="score score-none">?</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="/projects/{{ p.id }}" style="font-weight:500;color:var(--text)">{{ p.project_name }}</a>
+            {% if p.description %}
+            <div style="color:var(--muted);font-size:12px;margin-top:2px">{{ p.description[:100] }}{% if p.description|length > 100 %}…{% endif %}</div>
+            {% endif %}
+          </td>
+          <td style="color:var(--muted)">{{ p.agency_owner or '—' }}</td>
+          <td style="color:var(--muted)">{{ p.location_city or '—' }}</td>
+          <td style="white-space:nowrap">
+            {% if p.bid_due_date %}
+              {% set delta = (p.bid_due_date - today).days %}
+              <span style="{% if delta <= 7 %}color:var(--yellow){% elif delta <= 0 %}color:var(--red){% endif %}">
+                {{ p.bid_due_date.strftime('%m/%d/%y') }}
+                {% if delta >= 0 and delta <= 7 %}
+                <span style="font-size:11px">({{ delta }}d)</span>
+                {% endif %}
+              </span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="white-space:nowrap">{{ p.estimate_value | currency }}</td>
+          <td>
+            <span class="badge badge-{{ p.status }}">{{ p.status.replace('_',' ') }}</span>
+          </td>
+          <td>
+            {% if p.source_url %}
+            <a href="{{ p.source_url }}" target="_blank" style="font-size:12px;color:var(--muted)">↗</a>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card empty">
+  <div class="icon">📋</div>
+  <div style="font-size:16px;margin-bottom:8px">No projects yet</div>
+  <div style="color:var(--muted);margin-bottom:16px">Load sample data to see the dashboard in action, or fetch live sources.</div>
+  <button onclick="loadFixtures()">⚡ Load Sample Data (Fixtures)</button>
+</div>
+{% endif %}
+{% endblock %}
