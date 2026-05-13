@@ -175,7 +175,7 @@ class OaklandConnector(SourceConnector):
 
     def fetch_current_projects(self) -> list[ProjectIn]:
         try:
-            resp = httpx.get(LISTING_URL, headers=HEADERS, timeout=20, follow_redirects=True)
+            resp = httpx.get(LISTING_URL, headers=HEADERS, timeout=10, follow_redirects=True)
             resp.raise_for_status()
         except Exception:
             return []

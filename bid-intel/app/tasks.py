@@ -156,7 +156,9 @@ def fetch_source(db: Session, key: str, fixture: bool = False, archives: bool = 
     if not source:
         return {"error": f"Source '{key}' not found"}
 
-    connector = get_connector(key, fixture=fixture)
+    # fixture_only sources always use fixture data regardless of caller's preference
+    effective_fixture = fixture or (source.status == "fixture_only")
+    connector = get_connector(key, fixture=effective_fixture)
     if not connector:
         return {"status": "stub", "message": f"No connector implemented for '{key}'"}
 
@@ -164,35 +166,44 @@ def fetch_source(db: Session, key: str, fixture: bool = False, archives: bool = 
     projects_updated = 0
     results_added = 0
 
-    if archives:
-        if hasattr(connector, "fetch_archived_with_results"):
-            pairs = connector.fetch_archived_with_results()
-            for proj_in, bid_results_in in pairs:
-                proj_in.source_id = source.id
-                project, created = upsert_project(db, proj_in)
-                if created:
-                    projects_added += 1
-                else:
-                    projects_updated += 1
-                results_added += save_bid_results(db, project, bid_results_in)
+    try:
+        if archives:
+            if hasattr(connector, "fetch_archived_with_results"):
+                pairs = connector.fetch_archived_with_results()
+                for proj_in, bid_results_in in pairs:
+                    proj_in.source_id = source.id
+                    project, created = upsert_project(db, proj_in)
+                    if created:
+                        projects_added += 1
+                    else:
+                        projects_updated += 1
+                    results_added += save_bid_results(db, project, bid_results_in)
+            else:
+                archived = connector.fetch_archived_projects()
+                for proj_in in archived:
+                    proj_in.source_id = source.id
+                    _, created = upsert_project(db, proj_in)
+                    if created:
+                        projects_added += 1
+                    else:
+                        projects_updated += 1
         else:
-            archived = connector.fetch_archived_projects()
-            for proj_in in archived:
+            current = connector.fetch_current_projects()
+            for proj_in in current:
                 proj_in.source_id = source.id
                 _, created = upsert_project(db, proj_in)
                 if created:
                     projects_added += 1
                 else:
                     projects_updated += 1
-    else:
-        current = connector.fetch_current_projects()
-        for proj_in in current:
-            proj_in.source_id = source.id
-            _, created = upsert_project(db, proj_in)
-            if created:
-                projects_added += 1
-            else:
-                projects_updated += 1
+    except Exception as exc:
+        return {
+            "source": key,
+            "fixture": effective_fixture,
+            "archives": archives,
+            "status": "error",
+            "error": str(exc),
+        }
 
     source.last_checked_at = datetime.utcnow()
     db.commit()

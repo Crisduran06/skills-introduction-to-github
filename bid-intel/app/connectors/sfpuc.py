@@ -151,7 +151,7 @@ def _parse_aspnet_table(soup: BeautifulSoup, source_url: str, base_url: str,
 
 def _fetch_sfpuc() -> list[ProjectIn]:
     try:
-        resp = httpx.get(SFPUC_URL, headers=HEADERS, timeout=20, follow_redirects=True)
+        resp = httpx.get(SFPUC_URL, headers=HEADERS, timeout=10, follow_redirects=True)
         resp.raise_for_status()
     except Exception:
         return []
@@ -162,7 +162,7 @@ def _fetch_sfpuc() -> list[ProjectIn]:
 
 def _fetch_sfdpw() -> list[ProjectIn]:
     try:
-        resp = httpx.get(SFDPW_URL, headers=HEADERS, timeout=20, follow_redirects=True)
+        resp = httpx.get(SFDPW_URL, headers=HEADERS, timeout=10, follow_redirects=True)
         resp.raise_for_status()
     except Exception:
         return []

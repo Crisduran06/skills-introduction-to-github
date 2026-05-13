@@ -194,10 +194,14 @@ class MountainViewConnector(SourceConnector):
         if fixture or self._fixture:
             html = self._fixture_path.read_text(encoding="utf-8")
         else:
-            import httpx
-            resp = httpx.get(LIVE_URL, timeout=20, follow_redirects=True)
-            resp.raise_for_status()
-            html = resp.text
+            try:
+                import httpx
+                resp = httpx.get(LIVE_URL, timeout=10, follow_redirects=True)
+                resp.raise_for_status()
+                html = resp.text
+            except Exception:
+                # Fall back to fixture data if live fetch fails
+                html = self._fixture_path.read_text(encoding="utf-8")
         return BeautifulSoup(html, "lxml")
 
     def fetch_current_projects(self) -> list[ProjectIn]:

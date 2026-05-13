@@ -153,7 +153,7 @@ def _parse_page(html: str, source_url: str) -> list[ProjectIn]:
 
 def _fetch(url: str) -> list[ProjectIn]:
     try:
-        resp = httpx.get(url, headers=HEADERS, timeout=20, follow_redirects=True)
+        resp = httpx.get(url, headers=HEADERS, timeout=10, follow_redirects=True)
         resp.raise_for_status()
     except Exception:
         return []
