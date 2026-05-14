@@ -47,6 +47,9 @@
     .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
     .stat-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 6px; }
     .stat-card .value { font-size: 28px; font-weight: 700; }
+    .stat-card-link { text-decoration: none; color: inherit; cursor: pointer; transition: border-color .15s, transform .1s; }
+    .stat-card-link:hover { border-color: var(--accent); transform: translateY(-1px); text-decoration: none; }
+    .stat-card-active { border-color: var(--accent) !important; background: rgba(59,130,246,.08); }
     .stat-card .value.green { color: var(--green); }
     .stat-card .value.yellow { color: var(--yellow); }
     .stat-card .value.accent { color: var(--accent); }

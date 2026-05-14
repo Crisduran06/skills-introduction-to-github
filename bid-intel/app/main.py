@@ -77,7 +77,7 @@ templates.env.globals["enumerate"] = enumerate
 # ---------------------------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, db: Session = Depends(get_db)):
+async def dashboard(request: Request, filter: Optional[str] = None, db: Session = Depends(get_db)):
     today = date.today()
     week_out = today + timedelta(days=7)
 
@@ -92,16 +92,40 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         Project.is_archived == False,  # noqa: E712
     ).count()
 
-    from sqlalchemy import func
     results_this_week = db.query(BidResult).filter(
         BidResult.result_date >= today - timedelta(days=7),
     ).count()
 
+    q = db.query(Project)
+    filter_label = None
+
+    if filter == "open":
+        q = q.filter(Project.status == "open", Project.is_archived == False)  # noqa: E712
+        filter_label = "Open Bids"
+    elif filter == "due_this_week":
+        q = q.filter(
+            Project.bid_due_date >= today,
+            Project.bid_due_date <= week_out,
+            Project.is_archived == False,  # noqa: E712
+        )
+        filter_label = "Due This Week"
+    elif filter == "high_relevance":
+        q = q.filter(Project.relevance_score >= 4, Project.is_archived == False)  # noqa: E712
+        filter_label = "High Relevance (4–5)"
+    elif filter == "results_this_week":
+        result_project_ids = [
+            r.project_id for r in db.query(BidResult.project_id)
+            .filter(BidResult.result_date >= today - timedelta(days=7))
+            .distinct()
+        ]
+        q = q.filter(Project.id.in_(result_project_ids))
+        filter_label = "Results This Week"
+    else:
+        q = q.filter(Project.is_archived == False)  # noqa: E712
+
     projects = (
-        db.query(Project)
-        .filter(Project.is_archived == False)  # noqa: E712
-        .order_by(Project.bid_due_date.asc().nulls_last(), Project.relevance_score.desc().nulls_last())
-        .limit(100)
+        q.order_by(Project.bid_due_date.asc().nulls_last(), Project.relevance_score.desc().nulls_last())
+        .limit(200)
         .all()
     )
 
@@ -113,6 +137,8 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         "projects": projects,
         "today": today,
         "week_out": week_out,
+        "active_filter": filter,
+        "filter_label": filter_label,
     })
 
 

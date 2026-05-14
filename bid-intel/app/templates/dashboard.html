@@ -7,23 +7,30 @@
 </div>
 
 <div class="stat-grid">
-  <div class="stat-card">
+  <a href="/?filter=open" class="stat-card stat-card-link {% if active_filter == 'open' %}stat-card-active{% endif %}">
     <div class="label">Open Bids</div>
     <div class="value accent">{{ total_open }}</div>
-  </div>
-  <div class="stat-card">
+  </a>
+  <a href="/?filter=due_this_week" class="stat-card stat-card-link {% if active_filter == 'due_this_week' %}stat-card-active{% endif %}">
     <div class="label">Due This Week</div>
     <div class="value yellow">{{ due_this_week }}</div>
-  </div>
-  <div class="stat-card">
+  </a>
+  <a href="/?filter=high_relevance" class="stat-card stat-card-link {% if active_filter == 'high_relevance' %}stat-card-active{% endif %}">
     <div class="label">High Relevance (4–5)</div>
     <div class="value green">{{ high_relevance }}</div>
-  </div>
-  <div class="stat-card">
+  </a>
+  <a href="/?filter=results_this_week" class="stat-card stat-card-link {% if active_filter == 'results_this_week' %}stat-card-active{% endif %}">
     <div class="label">Results This Week</div>
     <div class="value">{{ results_this_week }}</div>
-  </div>
+  </a>
 </div>
+
+{% if filter_label %}
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+  <span style="font-weight:600;font-size:15px">{{ filter_label }}</span>
+  <a href="/" style="font-size:12px;color:var(--muted);border:1px solid var(--border);padding:2px 10px;border-radius:99px">✕ Clear filter</a>
+</div>
+{% endif %}
 
 <div class="actions">
   <button onclick="loadFixtures()">⚡ Load Sample Data (Fixtures)</button>
