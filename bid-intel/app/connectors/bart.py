@@ -203,7 +203,17 @@ class BartConnector(SourceConnector):
         return _fetch(CURRENT_URL, archived=False)
 
     def fetch_archived_projects(self) -> list[ProjectIn]:
-        return _fetch(AWARDS_URL, archived=True)
+        return [p for p, _ in self.fetch_archived_with_results()]
+
+    def fetch_archived_with_results(self) -> list[tuple[ProjectIn, list]]:
+        from app.schemas import BidResultIn
+        from app.connectors.pdf_extractor import scrape_pdfs_from_page
+        # Try HTML first
+        html_projects = _fetch(AWARDS_URL, archived=True)
+        if html_projects:
+            return [(p, []) for p in html_projects]
+        # Fall back to PDF extraction from the awards page
+        return scrape_pdfs_from_page(AWARDS_URL, AGENCY, CITY, COUNTY, max_pdfs=40)
 
     def debug_source(self) -> dict:
         d = super().debug_source()

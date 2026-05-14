@@ -228,6 +228,13 @@ def _fetch_sfdpw_archives() -> list[ProjectIn]:
     return result
 
 
+SFPUC_PDF_PAGES = [
+    "https://webapps.sfpuc.org/bids/bidlist.aspx?bidtype=5",
+    "https://www.sfpuc.org/doing-business/sfpuc-contracting-opportunities/construction-contracts",
+    "https://sfwater.org/index.aspx?page=588",
+]
+
+
 class SfpucConnector(SourceConnector):
     """SFPUC construction bid connector."""
     name = "SFPUC / SF Bids"
@@ -240,7 +247,28 @@ class SfpucConnector(SourceConnector):
         return _fetch_sfpuc()
 
     def fetch_archived_projects(self) -> list[ProjectIn]:
-        return _fetch_sfpuc_archives()
+        return [p for p, _ in self.fetch_archived_with_results()]
+
+    def fetch_archived_with_results(self) -> list[tuple[ProjectIn, list]]:
+        from app.connectors.pdf_extractor import scrape_pdfs_from_page
+        # Try HTML status URL variants first
+        html = _fetch_sfpuc_archives()
+        if html:
+            return [(p, []) for p in html]
+        # Fall back to PDF extraction from known SFPUC pages
+        seen: set[str] = set()
+        results = []
+        for page_url in SFPUC_PDF_PAGES:
+            for project, bid_results in scrape_pdfs_from_page(
+                page_url, SFPUC_AGENCY, SFPUC_CITY, SFPUC_COUNTY, max_pdfs=30
+            ):
+                key = project.external_id or project.project_name
+                if key not in seen:
+                    seen.add(key)
+                    results.append((project, bid_results))
+            if results:
+                break
+        return results
 
     def debug_source(self) -> dict:
         d = super().debug_source()

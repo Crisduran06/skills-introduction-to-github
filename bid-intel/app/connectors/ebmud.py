@@ -165,13 +165,31 @@ class EbmudConnector(SourceConnector):
         return result
 
     def fetch_archived_projects(self) -> list[ProjectIn]:
+        return [p for p, _ in self.fetch_archived_with_results()]
+
+    def fetch_archived_with_results(self) -> list[tuple[ProjectIn, list]]:
+        from app.connectors.pdf_extractor import scrape_pdfs_from_page
         seen: set[str] = set()
-        result: list[ProjectIn] = []
+        result = []
+        # Try the guessed HTML archive URLs first
         for p in _fetch(PAST_URL, is_archived=True) + _fetch(AWARDS_URL, is_archived=True):
             key = p.external_id or p.project_name
             if key not in seen:
                 seen.add(key)
-                result.append(p)
+                result.append((p, []))
+        if result:
+            return result
+        # Fall back: scan the main EBMUD bids site for PDF links
+        for page_url in (CURRENT_URL, BASE_URL + "/"):
+            for project, bid_results in scrape_pdfs_from_page(
+                page_url, AGENCY, CITY, COUNTY, max_pdfs=30
+            ):
+                key = project.external_id or project.project_name
+                if key not in seen:
+                    seen.add(key)
+                    result.append((project, bid_results))
+            if result:
+                break
         return result
 
     def debug_source(self) -> dict:

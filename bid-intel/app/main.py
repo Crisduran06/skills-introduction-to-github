@@ -305,14 +305,21 @@ async def api_debug_archives():
             if connector is None:
                 report[key] = {"error": "no connector"}
                 continue
-            if hasattr(connector, "fetch_archived_projects"):
+            if hasattr(connector, "fetch_archived_with_results"):
+                pairs = connector.fetch_archived_with_results()
+                report[key] = {
+                    "count": len(pairs),
+                    "with_bid_results": sum(1 for _, r in pairs if r),
+                    "sample": pairs[0][0].project_name if pairs else None,
+                }
+            elif hasattr(connector, "fetch_archived_projects"):
                 projects = connector.fetch_archived_projects()
                 report[key] = {
                     "count": len(projects),
                     "sample": projects[0].project_name if projects else None,
                 }
             else:
-                report[key] = {"error": "no fetch_archived_projects method"}
+                report[key] = {"error": "no archive method"}
         except Exception as exc:
             report[key] = {"error": str(exc)}
     return report
