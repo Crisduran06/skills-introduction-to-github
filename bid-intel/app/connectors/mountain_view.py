@@ -18,6 +18,7 @@ from app.models import Project
 from app.schemas import ProjectIn, PlanholderIn, BidResultIn, AddendumIn
 
 LIVE_URL = "https://www.mountainview.gov/depts/pw/purchasing/default.asp"
+PORTAL_URL = "https://vendors.planetbids.com/portal/47527/bo/bo-search"
 AGENCY = "City of Mountain View"
 CITY = "Mountain View"
 COUNTY = "Santa Clara"
@@ -70,7 +71,9 @@ def _parse_open_bids(soup: BeautifulSoup) -> list[ProjectIn]:
         docs_link = docs_cell.find("a") if docs_cell else None
         docs_url = docs_link.get("href", "") if docs_link else ""
 
-        source_url = f"https://www.mountainview.gov{href}" if href.startswith("/") else href
+        # Mountain View uses PlanetBids — fixture hrefs are synthetic and don't exist
+        # on the real site. Always point to the public portal search page.
+        source_url = PORTAL_URL
 
         projects.append(ProjectIn(
             external_id=bid_num,
@@ -83,7 +86,7 @@ def _parse_open_bids(soup: BeautifulSoup) -> list[ProjectIn]:
             engineer_estimate=_parse_money(estimate_raw),
             description=description,
             trade_scope_raw=description,
-            source_url=source_url or LIVE_URL,
+            source_url=source_url,
             documents_url=f"https://www.mountainview.gov{docs_url}" if docs_url.startswith("/") else docs_url or None,
             status="open",
             is_archived=False,

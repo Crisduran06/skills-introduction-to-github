@@ -119,6 +119,18 @@ def _parse_aspnet_table(soup: BeautifulSoup, source_url: str, base_url: str,
             if not title and len(cells) > 1:
                 title = cells[1].get_text(strip=True)
 
+        # If we didn't get a detail URL from the title cell, scan the whole
+        # row for any link that looks like a project detail page
+        if not href:
+            for cell in cells:
+                for a in cell.find_all("a", href=True):
+                    h = a.get("href", "")
+                    if any(kw in h.lower() for kw in ("detail", "caseload", "project", "bid", "opportunity")):
+                        href = h
+                        break
+                if href:
+                    break
+
         if not title or len(title) < 4:
             continue
 
