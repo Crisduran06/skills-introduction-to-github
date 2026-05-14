@@ -84,7 +84,7 @@
               </span>
             {% else %}—{% endif %}
           </td>
-          <td style="white-space:nowrap">{{ p.estimate_value | currency }}</td>
+          <td style="white-space:nowrap">{{ (p.estimate_value or p.engineer_estimate) | currency }}</td>
           <td>
             <span class="badge badge-{{ p.status }}">{{ p.status.replace('_',' ') }}</span>
           </td>
