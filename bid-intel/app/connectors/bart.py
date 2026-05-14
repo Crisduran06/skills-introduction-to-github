@@ -155,18 +155,27 @@ def _parse_page(html: str, source_url: str, archived: bool = False) -> list[Proj
     if projects:
         return projects
 
-    # Strategy 4: last resort — all links in main content area with substantial text
-    nav_texts = {a.get_text(strip=True) for a in soup.find_all("nav")} if soup.find("nav") else set()
-    seen_titles: set[str] = set()
-    for a in container.find_all("a", href=True):
+    # Strategy 4: list items in main content (simple bulleted award lists)
+    # Exclude nav/footer/sidebar elements first
+    for nav in soup.find_all(["nav", "footer", "header"]):
+        nav.decompose()
+    for li in container.find_all("li"):
+        a = li.find("a")
+        if not a:
+            continue
         title = a.get_text(strip=True)
         href = a.get("href", "")
-        if len(title) < 15 or title in nav_texts or title in seen_titles:
+        # Must look like an actual bid/contract link, not navigation
+        href_lower = href.lower()
+        title_lower = title.lower()
+        if len(title) < 15:
             continue
-        if not any(kw in href.lower() for kw in ("procurement", "contract", "award", "bid", "solicitation", "about/business")):
+        if any(skip in title_lower for skip in ("portal", "login", "register", "home", "contact", "about")):
             continue
-        seen_titles.add(title)
-        text = a.parent.get_text(" ", strip=True) if a.parent else title
+        if not any(kw in href_lower or kw in title_lower for kw in
+                   ("contract", "award", "bid", "solicitation", "rfp", "rfq", "project")):
+            continue
+        text = li.get_text(" ", strip=True)
         p = _make_project(title, href, text, source_url, archived)
         if p:
             projects.append(p)

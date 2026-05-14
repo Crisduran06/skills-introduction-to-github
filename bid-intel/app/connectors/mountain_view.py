@@ -303,7 +303,7 @@ class MountainViewConnector(SourceConnector):
     supports_current_bids = True
     supports_bid_results = True
     supports_awards = True
-    supports_archives = True
+    supports_archives = False  # PlanetBids API requires auth for historical data
 
     def __init__(self, fixture: bool = False):
         self._fixture = fixture

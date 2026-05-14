@@ -160,7 +160,7 @@ class VtaConnector(SourceConnector):
     key = "vta"
     platform_type = "opengov"
     supports_current_bids = True
-    supports_archives = True
+    supports_archives = False  # OpenGov API requires auth for historical data
 
     def fetch_current_projects(self) -> list[ProjectIn]:
         return _fetch_api(status="open")
