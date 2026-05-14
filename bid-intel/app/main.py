@@ -31,7 +31,21 @@ async def lifespan(app: FastAPI):
     db = next(db_gen)
     try:
         seed_sources(db)
-        if settings.autoseed_fixtures:
+        if settings.autofetch_live:
+            from app.models import Project
+            from datetime import datetime, timezone
+            last = db.query(Source.last_checked_at).filter(
+                Source.status == "live"
+            ).order_by(Source.last_checked_at.desc()).first()
+            last_ts = last[0] if last and last[0] else None
+            stale = (
+                last_ts is None
+                or (datetime.now(timezone.utc) - last_ts.replace(tzinfo=timezone.utc)).total_seconds() > 3600
+            )
+            if stale:
+                fetch_all_sources(db, fixture=False)
+                calculate_all_analytics(db)
+        elif settings.autoseed_fixtures:
             from app.models import Project
             if db.query(Project).count() == 0:
                 seed_fixtures(db)

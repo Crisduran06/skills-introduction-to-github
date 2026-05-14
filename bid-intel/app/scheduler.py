@@ -1,6 +1,7 @@
 """APScheduler setup. Only starts when SCHEDULER_ENABLED=true."""
 from __future__ import annotations
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 from app.config import settings
 
@@ -46,15 +47,15 @@ def start_scheduler() -> BackgroundScheduler:
 
     _scheduler.add_job(
         _fetch_all_job,
-        CronTrigger(hour=settings.fetch_hour, minute=settings.fetch_minute),
-        id="daily_fetch",
+        IntervalTrigger(hours=settings.fetch_interval_hours),
+        id="interval_fetch",
         replace_existing=True,
     )
 
     _scheduler.add_job(
         _check_results_job,
-        CronTrigger(hour=settings.results_check_hour, minute=settings.results_check_minute),
-        id="daily_results_check",
+        IntervalTrigger(hours=settings.fetch_interval_hours, minutes=5),
+        id="interval_results_check",
         replace_existing=True,
     )
 

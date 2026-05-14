@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     playwright_headless: bool = True
 
     autoseed_fixtures: bool = False
+    autofetch_live: bool = False
+    fetch_interval_hours: int = 6
 
     @property
     def fixtures_dir(self) -> Path:

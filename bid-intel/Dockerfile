@@ -7,7 +7,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-ENV AUTOSEED_FIXTURES=true
+ENV AUTOSEED_FIXTURES=false
+ENV AUTOFETCH_LIVE=true
+ENV SCHEDULER_ENABLED=true
+ENV FETCH_INTERVAL_HOURS=6
 
 EXPOSE 7860
 
