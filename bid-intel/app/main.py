@@ -199,6 +199,51 @@ async def project_detail(request: Request, project_id: int, db: Session = Depend
     })
 
 
+@app.get("/archive", response_class=HTMLResponse)
+async def archive_page(request: Request, agency: Optional[str] = None,
+                        year: Optional[int] = None, db: Session = Depends(get_db)):
+    from sqlalchemy import extract
+    q = db.query(Project).filter(
+        (Project.is_archived == True) | (Project.status.in_(["awarded", "bid_opened"]))  # noqa: E712
+    )
+    if agency:
+        q = q.filter(Project.agency_owner == agency)
+    if year:
+        q = q.filter(extract("year", Project.bid_due_date) == year)
+
+    projects = q.order_by(Project.bid_due_date.desc().nulls_last()).limit(500).all()
+
+    analytics_map: dict[int, ProjectBidAnalytics] = {}
+    for a in db.query(ProjectBidAnalytics).filter(
+        ProjectBidAnalytics.project_id.in_([p.id for p in projects])
+    ).all():
+        analytics_map[a.project_id] = a
+
+    agencies = [r[0] for r in db.query(Project.agency_owner).filter(
+        (Project.is_archived == True) | (Project.status.in_(["awarded", "bid_opened"])),  # noqa: E712
+        Project.agency_owner.isnot(None),
+    ).distinct().order_by(Project.agency_owner).all()]
+
+    years = sorted({
+        p.bid_due_date.year for p in
+        db.query(Project).filter(
+            (Project.is_archived == True) | (Project.status.in_(["awarded", "bid_opened"])),  # noqa: E712
+            Project.bid_due_date.isnot(None),
+        ).all()
+    }, reverse=True)
+
+    total = len(projects)
+    return templates.TemplateResponse(request, "archive.html", {
+        "projects": projects,
+        "analytics_map": analytics_map,
+        "agencies": agencies,
+        "years": years,
+        "selected_agency": agency,
+        "selected_year": year,
+        "total": total,
+    })
+
+
 @app.get("/analytics", response_class=HTMLResponse)
 async def analytics_page(request: Request, db: Session = Depends(get_db)):
     trends = get_trend_analytics(db)

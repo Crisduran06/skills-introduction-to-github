@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Historical Bids{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Historical Bids</h1>
+  <p>Awarded &amp; closed contracts — use this data to spot patterns and inform future bids</p>
+</div>
+
+{% if projects %}
+<div class="stat-grid" style="margin-bottom:20px">
+  <div class="stat-card">
+    <div class="label">Total Records</div>
+    <div class="value accent">{{ total }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Agencies</div>
+    <div class="value">{{ agencies | length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">With Estimates</div>
+    <div class="value green">{{ projects | selectattr('engineer_estimate') | list | length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">With Bid Results</div>
+    <div class="value yellow">{{ analytics_map | length }}</div>
+  </div>
+</div>
+{% endif %}
+
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:center">
+  <form method="get" action="/archive" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <select name="agency" onchange="this.form.submit()" style="min-width:180px">
+      <option value="">All Agencies</option>
+      {% for a in agencies %}
+      <option value="{{ a }}" {% if a == selected_agency %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
+    </select>
+    <select name="year" onchange="this.form.submit()" style="min-width:100px">
+      <option value="">All Years</option>
+      {% for y in years %}
+      <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+    {% if selected_agency or selected_year %}
+    <a href="/archive" style="font-size:12px;color:var(--muted);border:1px solid var(--border);padding:6px 12px;border-radius:7px">✕ Clear</a>
+    {% endif %}
+  </form>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <button class="secondary" onclick="fetchHistory()" style="font-size:12px;padding:6px 12px">🗂 Refresh Historical</button>
+    <button class="secondary" onclick="calcAnalytics()" style="font-size:12px;padding:6px 12px">📊 Recalculate</button>
+  </div>
+</div>
+
+{% if projects %}
+<div class="card" style="padding:0">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Score</th>
+          <th>Project</th>
+          <th>Agency</th>
+          <th>Bid Date</th>
+          <th>Eng. Estimate</th>
+          <th>Low Bid</th>
+          <th>Spread</th>
+          <th>Bidders</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in projects %}
+        {% set a = analytics_map.get(p.id) %}
+        <tr>
+          <td style="text-align:center">
+            {% if p.relevance_score %}
+            <span class="score score-{{ p.relevance_score }}" title="{{ p.relevance_reason or '' }}">{{ p.relevance_score }}</span>
+            {% else %}
+            <span class="score score-none">?</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="/projects/{{ p.id }}" style="font-weight:500;color:var(--text)">{{ p.project_name }}</a>
+            {% if p.description %}
+            <div style="color:var(--muted);font-size:12px;margin-top:2px">{{ p.description[:80] }}{% if p.description|length > 80 %}…{% endif %}</div>
+            {% endif %}
+          </td>
+          <td style="color:var(--muted);white-space:nowrap">{{ p.agency_owner or '—' }}</td>
+          <td style="white-space:nowrap;color:var(--muted)">
+            {{ p.bid_due_date.strftime('%m/%d/%y') if p.bid_due_date else '—' }}
+          </td>
+          <td style="white-space:nowrap">{{ (p.engineer_estimate or p.estimate_value) | currency }}</td>
+          <td style="white-space:nowrap">
+            {% if a and a.low_bid_amount %}
+            <span style="color:var(--green);font-weight:600">{{ a.low_bid_amount | currency }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="white-space:nowrap">
+            {% if a and a.low_bid_vs_engineer_estimate_percent %}
+            <span class="{% if a.low_bid_vs_engineer_estimate_percent < 0 %}delta-neg{% elif a.low_bid_vs_engineer_estimate_percent > 10 %}delta-pos{% else %}delta-zero{% endif %}">
+              {{ a.low_bid_vs_engineer_estimate_percent | pct }}
+            </span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="text-align:center;color:var(--muted)">
+            {{ a.actual_bidders_count if a and a.actual_bidders_count else '—' }}
+          </td>
+          <td>
+            <span class="badge badge-{{ p.status }}">{{ p.status.replace('_',' ') }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="card empty">
+  <div class="icon">🗄️</div>
+  <div style="font-size:16px;margin-bottom:8px">No historical data yet</div>
+  <div style="color:var(--muted);margin-bottom:20px;max-width:480px;margin-left:auto;margin-right:auto">
+    Click <strong>Load Historical Data</strong> to pull awarded and closed bids from connected sources.
+    BART, Mountain View, and VTA have historical data available.
+    You can also import past bid results manually using the
+    <a href="/manual-import">Import</a> page.
+  </div>
+  <button class="secondary" onclick="fetchHistory()">🗂 Load Historical Data</button>
+</div>
+{% endif %}
+
+{% endblock %}
