@@ -206,14 +206,23 @@ class BartConnector(SourceConnector):
         return [p for p, _ in self.fetch_archived_with_results()]
 
     def fetch_archived_with_results(self) -> list[tuple[ProjectIn, list]]:
-        from app.schemas import BidResultIn
         from app.connectors.pdf_extractor import scrape_pdfs_from_page
-        # Try HTML first
+        _NAV_WORDS = {"portal", "login", "register", "home", "contact", "about",
+                      "procurement portal", "bid portal", "click here", "learn more"}
         html_projects = _fetch(AWARDS_URL, archived=True)
-        if html_projects:
-            return [(p, []) for p in html_projects]
-        # Fall back to PDF extraction from the awards page
-        return scrape_pdfs_from_page(AWARDS_URL, AGENCY, CITY, COUNTY, max_pdfs=40)
+        real = [
+            p for p in html_projects
+            if len(p.project_name) > 20
+            and p.project_name.lower() not in _NAV_WORDS
+            and not any(w in p.project_name.lower() for w in ("portal", "login"))
+        ]
+        if real:
+            return [(p, []) for p in real]
+        # Fall back to PDF extraction — try awards page and main procurement page
+        results = scrape_pdfs_from_page(AWARDS_URL, AGENCY, CITY, COUNTY, max_pdfs=40)
+        if not results:
+            results = scrape_pdfs_from_page(CURRENT_URL, AGENCY, CITY, COUNTY, max_pdfs=20)
+        return results
 
     def debug_source(self) -> dict:
         d = super().debug_source()

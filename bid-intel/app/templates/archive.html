@@ -6,6 +6,30 @@
   <p>Awarded &amp; closed contracts — use this data to spot patterns and inform future bids</p>
 </div>
 
+<div class="card" style="margin-bottom:20px">
+  <h2>Import Bid Tabulation PDF</h2>
+  <p style="color:var(--muted);margin-bottom:14px;font-size:13px">
+    Find a bid tabulation or award notice PDF on any agency website and paste the URL below.
+    The system will extract the project title, engineer's estimate, and all bidder amounts automatically.
+  </p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+    <div style="flex:1;min-width:260px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">PDF URL</div>
+      <input type="text" id="pdfUrl" placeholder="https://agency.gov/bids/bid_tab_12345.pdf" style="width:100%">
+    </div>
+    <div style="min-width:160px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Agency</div>
+      <input type="text" id="pdfAgency" placeholder="e.g. SFPUC" style="width:100%">
+    </div>
+    <div style="min-width:130px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">City</div>
+      <input type="text" id="pdfCity" placeholder="San Francisco" style="width:100%">
+    </div>
+    <button onclick="importPdf()" style="white-space:nowrap">📄 Import PDF</button>
+  </div>
+  <div id="pdfResult" style="margin-top:10px;font-size:13px;color:var(--muted)"></div>
+</div>
+
 {% if projects %}
 <div class="stat-grid" style="margin-bottom:20px">
   <div class="stat-card">
@@ -129,4 +153,35 @@
 </div>
 {% endif %}
 
+{% endblock %}
+{% block scripts %}
+<script>
+async function importPdf() {
+  const url = document.getElementById('pdfUrl').value.trim();
+  const agency = document.getElementById('pdfAgency').value.trim();
+  const city = document.getElementById('pdfCity').value.trim();
+  const el = document.getElementById('pdfResult');
+  if (!url) { el.textContent = 'Please enter a PDF URL.'; return; }
+  el.textContent = 'Downloading and parsing PDF…';
+  try {
+    const r = await fetch('/api/import-pdf-url', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({pdf_url: url, agency: agency || 'Unknown', city: city, county: ''})
+    });
+    const data = await r.json();
+    if (data.error) {
+      el.style.color = 'var(--red)';
+      el.textContent = 'Error: ' + data.error;
+    } else {
+      el.style.color = 'var(--green)';
+      el.textContent = `Imported: "${data.project_name}" — ${data.bid_results_saved} bidder(s) saved. Refreshing…`;
+      setTimeout(() => location.reload(), 1800);
+    }
+  } catch(e) {
+    el.style.color = 'var(--red)';
+    el.textContent = 'Request failed: ' + e.message;
+  }
+}
+</script>
 {% endblock %}

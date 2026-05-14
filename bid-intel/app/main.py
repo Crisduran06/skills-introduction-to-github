@@ -344,6 +344,45 @@ async def api_debug_source(key: str, db: Session = Depends(get_db)):
     return connector.debug_source()
 
 
+@app.post("/api/import-pdf-url")
+async def api_import_pdf_url(
+    request: Request, db: Session = Depends(get_db)
+):
+    from app.tasks import upsert_project, save_bid_results, seed_sources
+    from app.connectors.pdf_extractor import extract_pdf_text, parse_award_pdf
+    from app.analytics import calculate_bid_deltas, calculate_project_analytics
+    body = await request.json()
+    pdf_url = (body.get("pdf_url") or "").strip()
+    agency = (body.get("agency") or "Unknown Agency").strip()
+    city = (body.get("city") or "").strip()
+    county = (body.get("county") or "").strip()
+    if not pdf_url:
+        return JSONResponse({"error": "pdf_url is required"}, status_code=400)
+
+    text = extract_pdf_text(pdf_url)
+    if not text:
+        return JSONResponse({"error": "Could not extract text from PDF — may be image-only or inaccessible"}, status_code=422)
+
+    project_in, bid_results_in = parse_award_pdf(text, pdf_url, agency, city, county)
+    if not project_in:
+        return JSONResponse({"error": "Could not find a project title in the PDF"}, status_code=422)
+
+    seed_sources(db)
+    project, created = upsert_project(db, project_in)
+    results_saved = save_bid_results(db, project, bid_results_in)
+    if bid_results_in:
+        calculate_bid_deltas(db, project)
+        calculate_project_analytics(db, project)
+    db.commit()
+    return {
+        "project_name": project.project_name,
+        "external_id": project.external_id,
+        "engineer_estimate": project.engineer_estimate,
+        "bid_results_saved": results_saved,
+        "created": created,
+    }
+
+
 @app.post("/api/manual-import")
 async def api_manual_import(payload: ManualImportIn, db: Session = Depends(get_db)):
     from app.tasks import upsert_project, save_bid_results, seed_sources

@@ -77,6 +77,12 @@ def merge_project(existing: Project, incoming: ProjectIn) -> Project:
         else:
             existing.source_url = incoming.source_url
 
+    # Always allow progression: open → awarded/archived
+    if incoming.is_archived and not existing.is_archived:
+        existing.is_archived = True
+    if incoming.status in ("awarded", "bid_opened") and existing.status == "open":
+        existing.status = incoming.status
+
     return existing
 
 
