@@ -160,10 +160,20 @@ class VtaConnector(SourceConnector):
     key = "vta"
     platform_type = "opengov"
     supports_current_bids = True
-    supports_archives = False
+    supports_archives = True
 
     def fetch_current_projects(self) -> list[ProjectIn]:
         return _fetch_api(status="open")
+
+    def fetch_archived_projects(self) -> list[ProjectIn]:
+        seen: set[str] = set()
+        result: list[ProjectIn] = []
+        for p in _fetch_api(status="closed") + _fetch_api(status="awarded"):
+            key = p.external_id or p.project_name
+            if key not in seen:
+                seen.add(key)
+                result.append(p)
+        return result
 
     def debug_source(self) -> dict:
         d = super().debug_source()

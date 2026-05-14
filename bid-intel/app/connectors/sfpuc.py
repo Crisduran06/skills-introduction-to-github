@@ -21,7 +21,19 @@ from app.schemas import ProjectIn
 
 # SFPUC
 SFPUC_URL = "https://webapps.sfpuc.org/bids/bidlist.aspx?bidtype=5"
+SFPUC_AWARDS_URLS = [
+    "https://webapps.sfpuc.org/bids/bidlist.aspx?bidtype=5&mode=awarded",
+    "https://webapps.sfpuc.org/bids/bidlist.aspx?bidtype=5&status=closed",
+    "https://webapps.sfpuc.org/bids/AwardedBid.aspx?bidtype=5",
+]
 SFPUC_DETAIL_BASE = "https://webapps.sfpuc.org/bids/"
+
+# SF Public Works archive candidates
+SFDPW_ARCHIVE_URLS = [
+    "https://bidopportunities.apps.sfdpw.org/?status=closed",
+    "https://bidopportunities.apps.sfdpw.org/Closed",
+    "https://bidopportunities.apps.sfdpw.org/Archive",
+]
 SFPUC_AGENCY = "SFPUC"
 SFPUC_CITY = "San Francisco"
 SFPUC_COUNTY = "San Francisco"
@@ -66,7 +78,8 @@ def _abs_url(href: str, base: str) -> str:
 
 
 def _parse_aspnet_table(soup: BeautifulSoup, source_url: str, base_url: str,
-                         agency: str, city: str, county: str) -> list[ProjectIn]:
+                         agency: str, city: str, county: str,
+                         is_archived: bool = False) -> list[ProjectIn]:
     projects: list[ProjectIn] = []
 
     # ASP.NET GridView renders as a <table> — often with id containing "GridView"
@@ -154,33 +167,65 @@ def _parse_aspnet_table(soup: BeautifulSoup, source_url: str, base_url: str,
             bid_due_date=_parse_date(due_raw),
             engineer_estimate=_parse_money(estimate_raw),
             source_url=_abs_url(href, base_url) or source_url,
-            status="open",
-            is_archived=False,
+            status="awarded" if is_archived else "open",
+            is_archived=is_archived,
         ))
 
     return projects
 
 
-def _fetch_sfpuc() -> list[ProjectIn]:
+def _fetch_sfpuc(is_archived: bool = False, url: str = SFPUC_URL) -> list[ProjectIn]:
     try:
-        resp = httpx.get(SFPUC_URL, headers=HEADERS, timeout=10, follow_redirects=True)
+        resp = httpx.get(url, headers=HEADERS, timeout=10, follow_redirects=True)
         resp.raise_for_status()
     except Exception:
         return []
     soup = BeautifulSoup(resp.text, "lxml")
-    return _parse_aspnet_table(soup, SFPUC_URL, SFPUC_DETAIL_BASE,
-                                SFPUC_AGENCY, SFPUC_CITY, SFPUC_COUNTY)
+    return _parse_aspnet_table(soup, url, SFPUC_DETAIL_BASE,
+                                SFPUC_AGENCY, SFPUC_CITY, SFPUC_COUNTY,
+                                is_archived=is_archived)
 
 
-def _fetch_sfdpw() -> list[ProjectIn]:
+def _fetch_sfpuc_archives() -> list[ProjectIn]:
+    seen: set[str] = set()
+    result: list[ProjectIn] = []
+    for url in SFPUC_AWARDS_URLS:
+        rows = _fetch_sfpuc(is_archived=True, url=url)
+        for p in rows:
+            key = p.external_id or p.project_name
+            if key not in seen:
+                seen.add(key)
+                result.append(p)
+        if result:
+            break
+    return result
+
+
+def _fetch_sfdpw(is_archived: bool = False, url: str = SFDPW_URL) -> list[ProjectIn]:
     try:
-        resp = httpx.get(SFDPW_URL, headers=HEADERS, timeout=10, follow_redirects=True)
+        resp = httpx.get(url, headers=HEADERS, timeout=10, follow_redirects=True)
         resp.raise_for_status()
     except Exception:
         return []
     soup = BeautifulSoup(resp.text, "lxml")
-    return _parse_aspnet_table(soup, SFDPW_URL, SFDPW_URL,
-                                SFDPW_AGENCY, SFDPW_CITY, SFDPW_COUNTY)
+    return _parse_aspnet_table(soup, url, SFDPW_URL,
+                                SFDPW_AGENCY, SFDPW_CITY, SFDPW_COUNTY,
+                                is_archived=is_archived)
+
+
+def _fetch_sfdpw_archives() -> list[ProjectIn]:
+    seen: set[str] = set()
+    result: list[ProjectIn] = []
+    for url in SFDPW_ARCHIVE_URLS:
+        rows = _fetch_sfdpw(is_archived=True, url=url)
+        for p in rows:
+            key = p.external_id or p.project_name
+            if key not in seen:
+                seen.add(key)
+                result.append(p)
+        if result:
+            break
+    return result
 
 
 class SfpucConnector(SourceConnector):
@@ -189,10 +234,13 @@ class SfpucConnector(SourceConnector):
     key = "sfpuc"
     platform_type = "public_page"
     supports_current_bids = True
-    supports_archives = False
+    supports_archives = True
 
     def fetch_current_projects(self) -> list[ProjectIn]:
         return _fetch_sfpuc()
+
+    def fetch_archived_projects(self) -> list[ProjectIn]:
+        return _fetch_sfpuc_archives()
 
     def debug_source(self) -> dict:
         d = super().debug_source()
@@ -214,10 +262,13 @@ class SfPublicWorksConnector(SourceConnector):
     key = "sf_public_works"
     platform_type = "public_page"
     supports_current_bids = True
-    supports_archives = False
+    supports_archives = True
 
     def fetch_current_projects(self) -> list[ProjectIn]:
         return _fetch_sfdpw()
+
+    def fetch_archived_projects(self) -> list[ProjectIn]:
+        return _fetch_sfdpw_archives()
 
     def debug_source(self) -> dict:
         d = super().debug_source()

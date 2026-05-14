@@ -16,6 +16,8 @@ from app.schemas import ProjectIn
 
 CURRENT_URL = "https://construction-bids.ebmud.com/CurrentorFutureBid.aspx?BidMode=Current"
 FUTURE_URL = "https://construction-bids.ebmud.com/CurrentorFutureBid.aspx?BidMode=Future"
+PAST_URL = "https://construction-bids.ebmud.com/CurrentorFutureBid.aspx?BidMode=Past"
+AWARDS_URL = "https://construction-bids.ebmud.com/AwardedBid.aspx"
 BASE_URL = "https://construction-bids.ebmud.com"
 AGENCY = "EBMUD"
 CITY = "Oakland"
@@ -51,7 +53,7 @@ def _abs_url(href: str) -> str:
     return href if href.startswith("http") else BASE_URL + "/" + href.lstrip("/")
 
 
-def _parse_table(soup: BeautifulSoup, source_url: str) -> list[ProjectIn]:
+def _parse_table(soup: BeautifulSoup, source_url: str, is_archived: bool = False) -> list[ProjectIn]:
     projects: list[ProjectIn] = []
 
     table = (
@@ -129,20 +131,20 @@ def _parse_table(soup: BeautifulSoup, source_url: str) -> list[ProjectIn]:
             bid_due_date=_parse_date(bid_date_raw),
             prebid_date=_parse_date(prebid_raw),
             source_url=_abs_url(href) or source_url,
-            status="open",
-            is_archived=False,
+            status="awarded" if is_archived else "open",
+            is_archived=is_archived,
         ))
 
     return projects
 
 
-def _fetch(url: str) -> list[ProjectIn]:
+def _fetch(url: str, is_archived: bool = False) -> list[ProjectIn]:
     try:
         resp = httpx.get(url, headers=HEADERS, timeout=10, follow_redirects=True)
         resp.raise_for_status()
     except Exception:
         return []
-    return _parse_table(BeautifulSoup(resp.text, "lxml"), url)
+    return _parse_table(BeautifulSoup(resp.text, "lxml"), url, is_archived=is_archived)
 
 
 class EbmudConnector(SourceConnector):
@@ -150,12 +152,22 @@ class EbmudConnector(SourceConnector):
     key = "ebmud"
     platform_type = "public_page"
     supports_current_bids = True
-    supports_archives = False
+    supports_archives = True
 
     def fetch_current_projects(self) -> list[ProjectIn]:
         seen: set[str] = set()
         result: list[ProjectIn] = []
         for p in _fetch(CURRENT_URL) + _fetch(FUTURE_URL):
+            key = p.external_id or p.project_name
+            if key not in seen:
+                seen.add(key)
+                result.append(p)
+        return result
+
+    def fetch_archived_projects(self) -> list[ProjectIn]:
+        seen: set[str] = set()
+        result: list[ProjectIn] = []
+        for p in _fetch(PAST_URL, is_archived=True) + _fetch(AWARDS_URL, is_archived=True):
             key = p.external_id or p.project_name
             if key not in seen:
                 seen.add(key)

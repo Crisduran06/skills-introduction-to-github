@@ -172,6 +172,14 @@ async function fetchLive() {
   setTimeout(() => location.reload(), 2000);
 }
 
+async function fetchHistory() {
+  showToast('Loading historical / awarded bid data… (this may take 30–60 seconds)');
+  const r = await apiPost('/api/fetch-archives');
+  const added = (r.results||[]).reduce((s,x)=>s+(x.projects_added||0),0);
+  showToast(`Historical data loaded: ${added} archived project(s) added. Refreshing…`);
+  setTimeout(() => location.reload(), 2500);
+}
+
 async function calcAnalytics() {
   showToast('Calculating analytics…');
   const r = await apiPost('/api/calculate-analytics');
