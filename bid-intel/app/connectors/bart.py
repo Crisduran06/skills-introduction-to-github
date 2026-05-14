@@ -44,112 +44,132 @@ def _abs_url(href: str) -> str:
     return BASE_URL + "/" + href.lstrip("/")
 
 
+def _make_project(title: str, href: str, text: str, source_url: str, archived: bool) -> Optional[ProjectIn]:
+    if not title or len(title) < 8:
+        return None
+    date_match = re.search(r"\d{1,2}/\d{1,2}/\d{2,4}", text)
+    due_raw = date_match.group(0) if date_match else ""
+    num_match = re.search(r"\b([A-Z]{1,5}-\d{3,}|\d{4,}-\d+)\b", text)
+    contract_num = num_match.group(0) if num_match else ""
+    return ProjectIn(
+        external_id=contract_num or None,
+        project_name=title,
+        agency_owner=AGENCY,
+        location_city=CITY,
+        location_county=COUNTY,
+        bid_due_date=_parse_date(due_raw),
+        trade_scope_raw=title,
+        source_url=_abs_url(href) or source_url,
+        status="awarded" if archived else "open",
+        is_archived=archived,
+    )
+
+
 def _parse_page(html: str, source_url: str, archived: bool = False) -> list[ProjectIn]:
     projects: list[ProjectIn] = []
     soup = BeautifulSoup(html, "lxml")
 
-    # Drupal Views renders as <div class="view-content"> with table or row divs
-    container = (
-        soup.find("div", class_=re.compile(r"view-content|view-procurement", re.I))
-        or soup.find("div", class_="content")
-        or soup
-    )
-
-    # Try table first
-    table = container.find("table")
+    # Strategy 1: any HTML table on the page
+    table = soup.find("table")
     if table:
         rows = table.find_all("tr")
-        if len(rows) < 2:
-            return projects
-
-        header_cells = rows[0].find_all(["th", "td"])
+        header_cells = rows[0].find_all(["th", "td"]) if rows else []
         headers = [c.get_text(strip=True).lower() for c in header_cells]
 
-        def _col_idx(*kws: str) -> Optional[int]:
+        def _col_idx(*kws):
             for kw in kws:
                 for i, h in enumerate(headers):
                     if kw in h:
                         return i
             return None
 
-        idx_num = _col_idx("contract", "solicitation", "number", "bid")
-        idx_title = _col_idx("title", "description", "project", "name")
-        idx_due = _col_idx("due", "close", "opening", "date")
-        idx_type = _col_idx("type", "category")
+        idx_num = _col_idx("contract", "solicitation", "number", "bid", "spec")
+        idx_title = _col_idx("title", "description", "project", "name", "subject")
+        idx_due = _col_idx("due", "close", "award", "opening", "date")
 
         for row in rows[1:]:
             cells = row.find_all("td")
             if not cells or len(cells) < 2:
                 continue
-
-            title = ""
-            href = ""
+            title, href = "", ""
             if idx_title is not None and idx_title < len(cells):
                 tc = cells[idx_title]
                 a = tc.find("a")
                 title = a.get_text(strip=True) if a else tc.get_text(strip=True)
                 href = a.get("href", "") if a else ""
-            else:
+            if not title:
                 for cell in cells:
                     a = cell.find("a")
-                    if a and len(a.get_text(strip=True)) > 5:
+                    if a and len(a.get_text(strip=True)) > 8:
                         title = a.get_text(strip=True)
                         href = a.get("href", "")
                         break
-                if not title and cells:
-                    title = cells[1].get_text(strip=True) if len(cells) > 1 else cells[0].get_text(strip=True)
-
-            if not title or len(title) < 4:
-                continue
-
             contract_num = cells[idx_num].get_text(strip=True) if idx_num is not None and idx_num < len(cells) else ""
             due_raw = cells[idx_due].get_text(strip=True) if idx_due is not None and idx_due < len(cells) else ""
-            scope = cells[idx_type].get_text(strip=True) if idx_type is not None and idx_type < len(cells) else ""
+            row_text = row.get_text(" ", strip=True)
+            if not due_raw:
+                m = re.search(r"\d{1,2}/\d{1,2}/\d{2,4}", row_text)
+                due_raw = m.group(0) if m else ""
+            p = _make_project(title, href, row_text, source_url, archived)
+            if p:
+                if contract_num:
+                    p.external_id = contract_num
+                if due_raw:
+                    p.bid_due_date = _parse_date(due_raw)
+                projects.append(p)
+        if projects:
+            return projects
 
-            projects.append(ProjectIn(
-                external_id=contract_num or None,
-                project_name=title,
-                agency_owner=AGENCY,
-                location_city=CITY,
-                location_county=COUNTY,
-                bid_due_date=_parse_date(due_raw),
-                trade_scope_raw=scope or title,
-                source_url=_abs_url(href) or source_url,
-                status="awarded" if archived else "open",
-                is_archived=archived,
-            ))
+    # Strategy 2: Drupal Views div rows (multiple class patterns)
+    container = (
+        soup.find("div", class_=re.compile(r"view-content|view-procurement|view-awards|field-items", re.I))
+        or soup.find("main")
+        or soup.find("div", id=re.compile(r"content|main|primary", re.I))
+        or soup.find("div", class_="content")
+        or soup
+    )
+
+    row_divs = container.find_all("div", class_=re.compile(r"views-row|view-row|bid-row|field-item", re.I))
+    for row in row_divs:
+        a = row.find("a")
+        title = a.get_text(strip=True) if a else ""
+        href = a.get("href", "") if a else ""
+        text = row.get_text(" ", strip=True)
+        p = _make_project(title, href, text, source_url, archived)
+        if p:
+            projects.append(p)
+    if projects:
         return projects
 
-    # Fallback: Drupal view rows as divs
-    rows = container.find_all("div", class_=re.compile(r"views-row|view-row|bid-row", re.I))
-    for row in rows:
-        a = row.find("a")
-        title = a.get_text(strip=True) if a else row.get_text(strip=True)[:120]
+    # Strategy 3: article tags (Drupal 8/9)
+    for article in container.find_all("article"):
+        a = article.find("a")
+        title = a.get_text(strip=True) if a else article.find(re.compile(r"h[1-4]"))
+        if hasattr(title, "get_text"):
+            title = title.get_text(strip=True)
         href = a.get("href", "") if a else ""
+        text = article.get_text(" ", strip=True)
+        p = _make_project(str(title), href, text, source_url, archived)
+        if p:
+            projects.append(p)
+    if projects:
+        return projects
 
-        # Look for a date pattern anywhere in the row text
-        text = row.get_text(" ", strip=True)
-        date_match = re.search(r"\d{1,2}/\d{1,2}/\d{2,4}", text)
-        due_raw = date_match.group(0) if date_match else ""
-
-        num_match = re.search(r"\b([A-Z]{1,4}-\d{3,}|\d{4,}-\d+)\b", text)
-        contract_num = num_match.group(0) if num_match else ""
-
-        if not title or len(title) < 4:
+    # Strategy 4: last resort — all links in main content area with substantial text
+    nav_texts = {a.get_text(strip=True) for a in soup.find_all("nav")} if soup.find("nav") else set()
+    seen_titles: set[str] = set()
+    for a in container.find_all("a", href=True):
+        title = a.get_text(strip=True)
+        href = a.get("href", "")
+        if len(title) < 15 or title in nav_texts or title in seen_titles:
             continue
-
-        projects.append(ProjectIn(
-            external_id=contract_num or None,
-            project_name=title,
-            agency_owner=AGENCY,
-            location_city=CITY,
-            location_county=COUNTY,
-            bid_due_date=_parse_date(due_raw),
-            trade_scope_raw=title,
-            source_url=_abs_url(href) or source_url,
-            status="awarded" if archived else "open",
-            is_archived=archived,
-        ))
+        if not any(kw in href.lower() for kw in ("procurement", "contract", "award", "bid", "solicitation", "about/business")):
+            continue
+        seen_titles.add(title)
+        text = a.parent.get_text(" ", strip=True) if a.parent else title
+        p = _make_project(title, href, text, source_url, archived)
+        if p:
+            projects.append(p)
 
     return projects
 

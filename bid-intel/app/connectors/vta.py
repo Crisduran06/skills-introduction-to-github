@@ -168,11 +168,16 @@ class VtaConnector(SourceConnector):
     def fetch_archived_projects(self) -> list[ProjectIn]:
         seen: set[str] = set()
         result: list[ProjectIn] = []
-        for p in _fetch_api(status="closed") + _fetch_api(status="awarded"):
-            key = p.external_id or p.project_name
-            if key not in seen:
-                seen.add(key)
-                result.append(p)
+        # OpenGov status values vary by portal version
+        for status_val in ("closed", "awarded", "past", "archived", "complete"):
+            batch = _fetch_api(status=status_val)
+            for p in batch:
+                key = p.external_id or p.project_name
+                if key not in seen:
+                    seen.add(key)
+                    result.append(p)
+            if result:
+                break
         return result
 
     def debug_source(self) -> dict:

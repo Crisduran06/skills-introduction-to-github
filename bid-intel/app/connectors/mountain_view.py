@@ -325,15 +325,17 @@ class MountainViewConnector(SourceConnector):
     def fetch_archived_projects(self) -> list[ProjectIn]:
         if self._fixture:
             return [proj for proj, _ in _parse_archive_rows(self._load_fixture_soup())]
-        archived = _fetch_api(status="closed")
-        archived += _fetch_api(status="awarded")
         seen: set[str] = set()
         result = []
-        for p in archived:
-            key = p.external_id or p.project_name
-            if key not in seen:
-                seen.add(key)
-                result.append(p)
+        # PlanetBids uses different status strings across portal versions
+        for status_val in ("closed", "awarded", "Closed", "Awarded", "past", "complete"):
+            for p in _fetch_api(status=status_val):
+                key = p.external_id or p.project_name
+                if key not in seen:
+                    seen.add(key)
+                    result.append(p)
+            if result:
+                break
         return result
 
     def fetch_archived_with_results(self) -> list[tuple[ProjectIn, list[BidResultIn]]]:

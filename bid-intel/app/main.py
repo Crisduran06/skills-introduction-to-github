@@ -295,6 +295,29 @@ async def api_calculate_analytics(db: Session = Depends(get_db)):
     return {"projects_calculated": count}
 
 
+@app.get("/api/debug-archives")
+async def api_debug_archives():
+    from app.tasks import get_connector
+    report = {}
+    for key in ["bart", "mountain_view", "vta", "ebmud", "sfpuc", "sf_public_works"]:
+        try:
+            connector = get_connector(key, fixture=False)
+            if connector is None:
+                report[key] = {"error": "no connector"}
+                continue
+            if hasattr(connector, "fetch_archived_projects"):
+                projects = connector.fetch_archived_projects()
+                report[key] = {
+                    "count": len(projects),
+                    "sample": projects[0].project_name if projects else None,
+                }
+            else:
+                report[key] = {"error": "no fetch_archived_projects method"}
+        except Exception as exc:
+            report[key] = {"error": str(exc)}
+    return report
+
+
 @app.get("/api/debug-source/{key}")
 async def api_debug_source(key: str, db: Session = Depends(get_db)):
     from app.tasks import get_connector
