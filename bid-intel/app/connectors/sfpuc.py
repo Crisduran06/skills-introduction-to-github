@@ -148,6 +148,9 @@ def _parse_aspnet_table(soup: BeautifulSoup, source_url: str, base_url: str,
             continue
 
         contract_num = cells[idx_num].get_text(strip=True) if idx_num is not None and idx_num < len(cells) else ""
+        # Discard values that look like category labels rather than real IDs
+        if contract_num and not re.search(r'\d', contract_num):
+            contract_num = ""
         estimate_raw = cells[idx_estimate].get_text(strip=True) if idx_estimate is not None and idx_estimate < len(cells) else ""
         due_raw = cells[idx_due].get_text(strip=True) if idx_due is not None and idx_due < len(cells) else ""
 

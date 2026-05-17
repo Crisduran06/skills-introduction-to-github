@@ -267,6 +267,51 @@ async def manual_import_page(request: Request):
     return templates.TemplateResponse(request, "manual_import.html", {})
 
 
+@app.get("/share/{project_id}", response_class=HTMLResponse)
+async def share_project(request: Request, project_id: int, db: Session = Depends(get_db)):
+    import re
+    project = db.query(Project).filter_by(id=project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    planholders = db.query(Planholder).filter_by(project_id=project_id).all()
+    analytics = db.query(ProjectBidAnalytics).filter_by(project_id=project_id).first()
+
+    from app.models import Company
+    gc_names: list[str] = []
+    for ph in planholders:
+        name = None
+        if ph.company_id:
+            c = db.query(Company).filter_by(id=ph.company_id).first()
+            if c:
+                name = c.name
+        if not name:
+            name = ph.listed_as
+        if name:
+            gc_names.append(name)
+
+    # Extract square footage from description or trade_scope_raw
+    sq_ft = None
+    for text in [project.description, project.trade_scope_raw]:
+        if text:
+            m = re.search(r'(\d[\d,]*)\s*(?:sq\.?\s*ft\.?|square\s*feet)', text, re.I)
+            if m:
+                sq_ft = m.group(1).replace(",", "")
+                break
+
+    days_left = None
+    if project.bid_due_date:
+        days_left = (project.bid_due_date - date.today()).days
+
+    return templates.TemplateResponse(request, "share.html", {
+        "project": project,
+        "gc_names": gc_names,
+        "sq_ft": sq_ft,
+        "analytics": analytics,
+        "days_left": days_left,
+    })
+
+
 # ---------------------------------------------------------------------------
 # API endpoints
 # ---------------------------------------------------------------------------
