@@ -43,6 +43,10 @@ class ProjectIn(BaseModel):
     results_url: Optional[str] = None
     award_url: Optional[str] = None
     archive_url: Optional[str] = None
+    bid_type: Optional[str] = None
+    project_type: Optional[str] = None
+    construction_manager: Optional[str] = None
+    architect: Optional[str] = None
     status: str = "open"
     is_archived: bool = False
 
@@ -70,6 +74,10 @@ class ProjectOut(BaseModel):
     results_url: Optional[str] = None
     award_url: Optional[str] = None
     archive_url: Optional[str] = None
+    bid_type: Optional[str] = None
+    project_type: Optional[str] = None
+    construction_manager: Optional[str] = None
+    architect: Optional[str] = None
     status: str
     is_archived: bool
     last_checked_at: Optional[datetime] = None
@@ -169,3 +177,13 @@ class ProjectBidAnalyticsOut(BaseModel):
 class ManualImportIn(BaseModel):
     raw_text: str
     import_type: str = "auto"
+
+
+class SubcontractorIn(BaseModel):
+    project_id: Optional[int] = None
+    company_id: Optional[int] = None
+    bid_result_id: Optional[int] = None
+    listed_as: Optional[str] = None
+    trade_scope: Optional[str] = None
+    role: str = "sub"
+    source_url: Optional[str] = None

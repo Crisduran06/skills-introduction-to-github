@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db, init_db
-from app.models import Source, Project, ProjectBidAnalytics, BidResult, Planholder, Addendum, ProjectNote, DecisionStatus
+from app.models import Source, Project, ProjectBidAnalytics, BidResult, Planholder, Addendum, ProjectNote, DecisionStatus, ProjectSubcontractor
 from app.schemas import ManualImportIn
 from app.tasks import (
     seed_sources, seed_fixtures, fetch_all_sources, fetch_all_archives,
@@ -91,7 +91,14 @@ templates.env.globals["enumerate"] = enumerate
 # ---------------------------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, filter: Optional[str] = None, db: Session = Depends(get_db)):
+async def dashboard(
+    request: Request,
+    filter: Optional[str] = None,
+    bid_type: Optional[str] = None,
+    project_type: Optional[str] = None,
+    agency: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
     today = date.today()
     week_out = today + timedelta(days=7)
 
@@ -137,11 +144,29 @@ async def dashboard(request: Request, filter: Optional[str] = None, db: Session 
     else:
         q = q.filter(Project.is_archived == False)  # noqa: E712
 
+    if bid_type:
+        q = q.filter(Project.bid_type == bid_type)
+    if project_type:
+        q = q.filter(Project.project_type == project_type)
+    if agency:
+        q = q.filter(Project.agency_owner == agency)
+
     projects = (
         q.order_by(Project.bid_due_date.asc().nulls_last(), Project.relevance_score.desc().nulls_last())
         .limit(200)
         .all()
     )
+
+    # Build filter option lists from live projects
+    bid_types = [r[0] for r in db.query(Project.bid_type).filter(
+        Project.is_archived == False, Project.bid_type.isnot(None)  # noqa: E712
+    ).distinct().order_by(Project.bid_type).all()]
+    project_types = [r[0] for r in db.query(Project.project_type).filter(
+        Project.is_archived == False, Project.project_type.isnot(None)  # noqa: E712
+    ).distinct().order_by(Project.project_type).all()]
+    agencies = [r[0] for r in db.query(Project.agency_owner).filter(
+        Project.is_archived == False, Project.agency_owner.isnot(None)  # noqa: E712
+    ).distinct().order_by(Project.agency_owner).all()]
 
     return templates.TemplateResponse(request, "dashboard.html", {
         "total_open": total_open,
@@ -153,6 +178,12 @@ async def dashboard(request: Request, filter: Optional[str] = None, db: Session 
         "week_out": week_out,
         "active_filter": filter,
         "filter_label": filter_label,
+        "bid_types": bid_types,
+        "project_types": project_types,
+        "agencies": agencies,
+        "selected_bid_type": bid_type,
+        "selected_project_type": project_type,
+        "selected_agency": agency,
     })
 
 
@@ -169,6 +200,12 @@ async def project_detail(request: Request, project_id: int, db: Session = Depend
         .all()
     )
     planholders = db.query(Planholder).filter_by(project_id=project_id).all()
+    subcontractors = (
+        db.query(ProjectSubcontractor)
+        .filter_by(project_id=project_id)
+        .order_by(ProjectSubcontractor.trade_scope.asc().nulls_last())
+        .all()
+    )
     addenda = db.query(Addendum).filter_by(project_id=project_id).order_by(Addendum.addendum_number).all()
     notes = db.query(ProjectNote).filter_by(project_id=project_id).order_by(ProjectNote.created_at.desc()).all()
     analytics = db.query(ProjectBidAnalytics).filter_by(project_id=project_id).first()
@@ -186,11 +223,17 @@ async def project_detail(request: Request, project_id: int, db: Session = Depend
             c = db.query(Company).filter_by(id=ph.company_id).first()
             if c:
                 company_map[ph.company_id] = c.name
+    for s in subcontractors:
+        if s.company_id and s.company_id not in company_map:
+            c = db.query(Company).filter_by(id=s.company_id).first()
+            if c:
+                company_map[s.company_id] = c.name
 
     return templates.TemplateResponse(request, "project_detail.html", {
         "project": project,
         "bid_results": bid_results,
         "planholders": planholders,
+        "subcontractors": subcontractors,
         "addenda": addenda,
         "notes": notes,
         "analytics": analytics,
@@ -200,8 +243,14 @@ async def project_detail(request: Request, project_id: int, db: Session = Depend
 
 
 @app.get("/archive", response_class=HTMLResponse)
-async def archive_page(request: Request, agency: Optional[str] = None,
-                        year: Optional[int] = None, db: Session = Depends(get_db)):
+async def archive_page(
+    request: Request,
+    agency: Optional[str] = None,
+    year: Optional[int] = None,
+    bid_type: Optional[str] = None,
+    project_type: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
     from sqlalchemy import extract
     q = db.query(Project).filter(
         (Project.is_archived == True) | (Project.status.in_(["awarded", "bid_opened"]))  # noqa: E712
@@ -210,6 +259,10 @@ async def archive_page(request: Request, agency: Optional[str] = None,
         q = q.filter(Project.agency_owner == agency)
     if year:
         q = q.filter(extract("year", Project.bid_due_date) == year)
+    if bid_type:
+        q = q.filter(Project.bid_type == bid_type)
+    if project_type:
+        q = q.filter(Project.project_type == project_type)
 
     projects = q.order_by(Project.bid_due_date.desc().nulls_last()).limit(500).all()
 
@@ -232,6 +285,15 @@ async def archive_page(request: Request, agency: Optional[str] = None,
         ).all()
     }, reverse=True)
 
+    archive_bid_types = [r[0] for r in db.query(Project.bid_type).filter(
+        (Project.is_archived == True) | (Project.status.in_(["awarded", "bid_opened"])),  # noqa: E712
+        Project.bid_type.isnot(None),
+    ).distinct().order_by(Project.bid_type).all()]
+    archive_project_types = [r[0] for r in db.query(Project.project_type).filter(
+        (Project.is_archived == True) | (Project.status.in_(["awarded", "bid_opened"])),  # noqa: E712
+        Project.project_type.isnot(None),
+    ).distinct().order_by(Project.project_type).all()]
+
     total = len(projects)
     return templates.TemplateResponse(request, "archive.html", {
         "projects": projects,
@@ -240,6 +302,10 @@ async def archive_page(request: Request, agency: Optional[str] = None,
         "years": years,
         "selected_agency": agency,
         "selected_year": year,
+        "bid_types": archive_bid_types,
+        "project_types": archive_project_types,
+        "selected_bid_type": bid_type,
+        "selected_project_type": project_type,
         "total": total,
     })
 

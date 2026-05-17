@@ -32,6 +32,33 @@
 </div>
 {% endif %}
 
+{% if bid_types or project_types or agencies %}
+<form method="get" action="/" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+  {% if active_filter %}<input type="hidden" name="filter" value="{{ active_filter }}">{% endif %}
+  {% if bid_types %}
+  <select name="bid_type" onchange="this.form.submit()" style="min-width:140px;font-size:12px">
+    <option value="">All Bid Types</option>
+    {% for bt in bid_types %}<option value="{{ bt }}" {% if bt == selected_bid_type %}selected{% endif %}>{{ bt.replace('_',' ').title() }}</option>{% endfor %}
+  </select>
+  {% endif %}
+  {% if project_types %}
+  <select name="project_type" onchange="this.form.submit()" style="min-width:150px;font-size:12px">
+    <option value="">All Project Types</option>
+    {% for pt in project_types %}<option value="{{ pt }}" {% if pt == selected_project_type %}selected{% endif %}>{{ pt.replace('_',' ').replace('k12','K-12').title() }}</option>{% endfor %}
+  </select>
+  {% endif %}
+  {% if agencies %}
+  <select name="agency" onchange="this.form.submit()" style="min-width:170px;font-size:12px">
+    <option value="">All Agencies</option>
+    {% for a in agencies %}<option value="{{ a }}" {% if a == selected_agency %}selected{% endif %}>{{ a }}</option>{% endfor %}
+  </select>
+  {% endif %}
+  {% if selected_bid_type or selected_project_type or selected_agency %}
+  <a href="/" style="font-size:12px;color:var(--muted);border:1px solid var(--border);padding:5px 10px;border-radius:7px">✕ Clear</a>
+  {% endif %}
+</form>
+{% endif %}
+
 <div class="actions">
   <button class="secondary" onclick="fetchLive()">🌐 Fetch Live Sources</button>
   <button class="secondary" onclick="fetchHistory()">🗂 Load Historical Data</button>
@@ -48,7 +75,7 @@
           <th>Score</th>
           <th>Project</th>
           <th>Agency</th>
-          <th>City</th>
+          <th>Type</th>
           <th>Bid Due</th>
           <th>Estimate</th>
           <th>Status</th>
@@ -72,7 +99,10 @@
             {% endif %}
           </td>
           <td style="color:var(--muted)">{{ p.agency_owner or '—' }}</td>
-          <td style="color:var(--muted)">{{ p.location_city or '—' }}</td>
+          <td style="white-space:nowrap">
+            {% if p.bid_type %}<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--border);color:var(--muted);font-weight:600;letter-spacing:.3px;text-transform:uppercase">{{ p.bid_type.replace('_',' ') }}</span>{% endif %}
+            {% if p.project_type %}<div style="font-size:10px;color:var(--muted);margin-top:2px">{{ p.project_type.replace('_',' ').replace('k12','K-12') }}</div>{% endif %}
+          </td>
           <td style="white-space:nowrap">
             {% if p.bid_due_date %}
               {% set delta = (p.bid_due_date - today).days %}

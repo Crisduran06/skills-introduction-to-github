@@ -30,7 +30,19 @@
       <tr><td style="color:var(--muted);padding:5px 0">Pre-Bid Date</td><td>{{ project.prebid_date or '—' }}</td></tr>
       <tr><td style="color:var(--muted);padding:5px 0">Engineer's Estimate</td><td style="font-weight:600">{{ project.engineer_estimate | currency }}</td></tr>
       <tr><td style="color:var(--muted);padding:5px 0">Est. Value</td><td>{{ project.estimate_value | currency }}</td></tr>
-      <tr><td style="color:var(--muted);padding:5px 0">External ID</td><td style="font-family:monospace">{{ project.external_id or '—' }}</td></tr>
+      {% if project.bid_type %}
+      <tr><td style="color:var(--muted);padding:5px 0">Bid Type</td><td><span style="font-size:11px;padding:2px 8px;border-radius:4px;background:var(--border);font-weight:600;text-transform:uppercase;letter-spacing:.3px">{{ project.bid_type.replace('_',' ') }}</span></td></tr>
+      {% endif %}
+      {% if project.project_type %}
+      <tr><td style="color:var(--muted);padding:5px 0">Project Type</td><td>{{ project.project_type.replace('_',' ').replace('k12','K-12').title() }}</td></tr>
+      {% endif %}
+      {% if project.construction_manager %}
+      <tr><td style="color:var(--muted);padding:5px 0">Construction Mgr</td><td>{{ project.construction_manager }}</td></tr>
+      {% endif %}
+      {% if project.architect %}
+      <tr><td style="color:var(--muted);padding:5px 0">Architect</td><td>{{ project.architect }}</td></tr>
+      {% endif %}
+      <tr><td style="color:var(--muted);padding:5px 0">Contract / Bid #</td><td style="font-family:monospace">{{ project.external_id or '—' }}</td></tr>
       <tr><td style="color:var(--muted);padding:5px 0">Created</td><td>{{ project.created_at.strftime('%Y-%m-%d') if project.created_at else '—' }}</td></tr>
     </table>
     {% if project.description %}
@@ -125,6 +137,37 @@
             {{ r.delta_from_engineer_estimate_percent | pct }}
           </td>
           <td>{% if r.is_awarded %}<span class="badge badge-awarded">Awarded</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if subcontractors %}
+<div class="card section">
+  <h2>Subcontractors ({{ subcontractors|length }})</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Trade / Scope</th><th>Company</th><th>Role</th><th>GC (Bid Result)</th></tr></thead>
+      <tbody>
+        {% for s in subcontractors %}
+        <tr>
+          <td style="font-weight:500">{{ s.trade_scope or '—' }}</td>
+          <td>
+            {% if s.company_id and s.company_id in company_map %}{{ company_map[s.company_id] }}
+            {% elif s.listed_as %}{{ s.listed_as }}
+            {% else %}—{% endif %}
+          </td>
+          <td><span class="badge badge-open" style="font-size:10px;padding:1px 6px">{{ s.role }}</span></td>
+          <td style="color:var(--muted);font-size:12px">
+            {% if s.bid_result_id %}
+              {% for r in bid_results %}{% if r.id == s.bid_result_id %}
+                {% if r.company_id and r.company_id in company_map %}{{ company_map[r.company_id] }}{% else %}#{{ s.bid_result_id }}{% endif %}
+              {% endif %}{% endfor %}
+            {% else %}—{% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

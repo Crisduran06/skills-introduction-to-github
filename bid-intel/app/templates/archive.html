@@ -65,7 +65,19 @@
       <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
       {% endfor %}
     </select>
-    {% if selected_agency or selected_year %}
+    {% if bid_types %}
+    <select name="bid_type" onchange="this.form.submit()" style="min-width:140px">
+      <option value="">All Bid Types</option>
+      {% for bt in bid_types %}<option value="{{ bt }}" {% if bt == selected_bid_type %}selected{% endif %}>{{ bt.replace('_',' ').title() }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    {% if project_types %}
+    <select name="project_type" onchange="this.form.submit()" style="min-width:150px">
+      <option value="">All Project Types</option>
+      {% for pt in project_types %}<option value="{{ pt }}" {% if pt == selected_project_type %}selected{% endif %}>{{ pt.replace('_',' ').replace('k12','K-12').title() }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    {% if selected_agency or selected_year or selected_bid_type or selected_project_type %}
     <a href="/archive" style="font-size:12px;color:var(--muted);border:1px solid var(--border);padding:6px 12px;border-radius:7px">✕ Clear</a>
     {% endif %}
   </form>

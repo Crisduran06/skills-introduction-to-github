@@ -107,6 +107,10 @@ class Project(Base):
     results_url: Mapped[Optional[str]] = mapped_column(String(1000))
     award_url: Mapped[Optional[str]] = mapped_column(String(1000))
     archive_url: Mapped[Optional[str]] = mapped_column(String(1000))
+    bid_type: Mapped[Optional[str]] = mapped_column(String(50))   # ifb, rfq, rfp, lease_leaseback, cmar, design_build
+    project_type: Mapped[Optional[str]] = mapped_column(String(100))  # k12, water_utility, transit, airport, port, municipal, parks
+    construction_manager: Mapped[Optional[str]] = mapped_column(String(255))
+    architect: Mapped[Optional[str]] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(50), default="unknown")
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
     last_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
@@ -121,6 +125,7 @@ class Project(Base):
     decision_status: Mapped[Optional[DecisionStatus]] = relationship("DecisionStatus", back_populates="project", uselist=False, cascade="all, delete-orphan")
     bid_analytics: Mapped[Optional[ProjectBidAnalytics]] = relationship("ProjectBidAnalytics", back_populates="project", uselist=False, cascade="all, delete-orphan")
     company_participations: Mapped[list[CompanyProjectParticipation]] = relationship("CompanyProjectParticipation", back_populates="project", cascade="all, delete-orphan")
+    subcontractors: Mapped[list["ProjectSubcontractor"]] = relationship("ProjectSubcontractor", back_populates="project", cascade="all, delete-orphan")
 
 
 class Company(Base):
@@ -139,6 +144,7 @@ class Company(Base):
     planholders: Mapped[list[Planholder]] = relationship("Planholder", back_populates="company")
     bid_results: Mapped[list[BidResult]] = relationship("BidResult", back_populates="company")
     participations: Mapped[list[CompanyProjectParticipation]] = relationship("CompanyProjectParticipation", back_populates="company")
+    subcontractor_entries: Mapped[list["ProjectSubcontractor"]] = relationship("ProjectSubcontractor", back_populates="company")
 
 
 class Planholder(Base):
@@ -263,3 +269,20 @@ class DecisionStatus(Base):
     reason: Mapped[Optional[str]] = mapped_column(Text)
 
     project: Mapped[Project] = relationship("Project", back_populates="decision_status")
+
+
+class ProjectSubcontractor(Base):
+    __tablename__ = "project_subcontractors"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("projects.id"))
+    company_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("companies.id"))
+    bid_result_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("bid_results.id"))
+    listed_as: Mapped[Optional[str]] = mapped_column(String(500))
+    trade_scope: Mapped[Optional[str]] = mapped_column(String(255))  # "Electrical", "Plumbing", etc.
+    role: Mapped[str] = mapped_column(String(50), default="sub")
+    source_url: Mapped[Optional[str]] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    project: Mapped[Project] = relationship("Project", back_populates="subcontractors")
+    company: Mapped[Optional[Company]] = relationship("Company", back_populates="subcontractor_entries")

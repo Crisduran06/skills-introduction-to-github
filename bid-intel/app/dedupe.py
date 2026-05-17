@@ -70,6 +70,14 @@ def merge_project(existing: Project, incoming: ProjectIn) -> Project:
         existing.award_url = incoming.award_url
     if not existing.archive_url and incoming.archive_url:
         existing.archive_url = incoming.archive_url
+    if not existing.bid_type and incoming.bid_type:
+        existing.bid_type = incoming.bid_type
+    if not existing.project_type and incoming.project_type:
+        existing.project_type = incoming.project_type
+    if not existing.construction_manager and incoming.construction_manager:
+        existing.construction_manager = incoming.construction_manager
+    if not existing.architect and incoming.architect:
+        existing.architect = incoming.architect
 
     if incoming.source_url and incoming.source_url not in (existing.source_url or ""):
         if existing.source_url:

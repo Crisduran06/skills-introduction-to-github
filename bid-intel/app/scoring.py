@@ -1,5 +1,6 @@
 from __future__ import annotations
 import re
+from typing import Optional
 
 HIGH_KEYWORDS = [
     "electrical", "low voltage", "fire alarm", "fire protection",
@@ -36,6 +37,45 @@ LOW_KEYWORDS = [
 
 def _normalize(text: str) -> str:
     return text.lower()
+
+
+def infer_bid_type(text: str) -> Optional[str]:
+    t = text.lower()
+    if any(x in t for x in ["lease-leaseback", "lease leaseback", " llb ", "(llb)", "llb "]):
+        return "lease_leaseback"
+    if any(x in t for x in ["cmar", "cm at risk", "cm@risk", "construction manager at risk"]):
+        return "cmar"
+    if any(x in t for x in ["design-build", "design build", "design/build"]):
+        return "design_build"
+    if re.search(r'\brfq\b', t) or "request for qualifications" in t:
+        return "rfq"
+    if re.search(r'\brfp\b', t) or "request for proposal" in t:
+        return "rfp"
+    if re.search(r'\bifb\b', t) or "invitation for bid" in t or "invitation to bid" in t:
+        return "ifb"
+    return None
+
+
+def infer_project_type(text: str) -> Optional[str]:
+    t = text.lower()
+    if any(x in t for x in ["school", "unified", "elementary", "high school", "campus", "classroom",
+                             "k-12", "district", "education", "academic", "student", "portable",
+                             "gymnasium", "cafeteria", "library modernization"]):
+        return "k12"
+    if any(x in t for x in ["water", "sewer", "wastewater", "pump station", "water treatment",
+                             "pipeline", "storm drain", "drainage", "reservoir", "potable"]):
+        return "water_utility"
+    if any(x in t for x in ["bart ", "light rail", "transit center", "bus rapid", " brt ",
+                             "rail station", "caltrain"]):
+        return "transit"
+    if any(x in t for x in ["airport", "terminal", "sfo", "airfield", "runway", "taxiway"]):
+        return "airport"
+    if any(x in t for x in ["port of", " wharf", "marine facility", " pier ", "berth", "cargo"]):
+        return "port"
+    if any(x in t for x in ["park improvement", "recreation center", "community center",
+                             "trail improvement", "open space", "sports complex"]):
+        return "parks"
+    return "municipal"
 
 
 def score_project(project_name: str, description: str = "", trade_scope: str = "") -> tuple[int, str]:

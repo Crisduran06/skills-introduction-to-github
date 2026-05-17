@@ -12,7 +12,7 @@ from app.models import (
     BidResult, ProjectBidAnalytics, CompanyProjectParticipation,
 )
 from app.schemas import ProjectIn, PlanholderIn, BidResultIn
-from app.scoring import score_project
+from app.scoring import score_project, infer_bid_type, infer_project_type
 from app.dedupe import find_duplicate, merge_project, normalize_company_name
 from app.analytics import calculate_all_analytics
 
@@ -40,6 +40,12 @@ SOURCE_SEED_DATA = [
     dict(name="Santa Clara County Procurement", key="santa_clara_county", base_url="https://www.sccgov.org/sites/oa/Pages/Procurement.aspx", platform_type="public_page", status="stub", scrape_allowed=True, auth_required=False, supports_current_bids=True),
     dict(name="BXSCCO Weekly Bidding PDF", key="bxscco", base_url="https://www.bxscco.com", platform_type="pdf_bulletin", status="stub", scrape_allowed=False, auth_required=True, notes="Weekly PDF bulletin — membership may be required."),
     dict(name="Bay Area Builders Exchange / CalBX", key="builders_exchange", base_url="https://www.calbx.com", platform_type="pdf_bulletin", status="stub", scrape_allowed=False, auth_required=True, notes="CalBX requires membership. Check public listing availability."),
+    dict(name="City of San Jose Procurement", key="san_jose", base_url="https://www.sanjoseca.gov/business/doing-business-with-san-jose/purchasing-and-contracts/solicitations", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, supports_archives=True, notes="City public bid listing page."),
+    dict(name="SF Unified School District", key="sfusd", base_url="https://www.sfusd.edu/services/business-services/purchasing-contracting-and-bidding/bid-opportunities", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, supports_archives=True, notes="SFUSD public bid opportunities page. Includes IFBs and lease-leaseback."),
+    dict(name="Berkeley Unified School District", key="berkeley_unified", base_url="https://www.berkeleyschools.net/departments/general-services/purchasing/bids/", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, supports_archives=True, notes="BUSD public bid page."),
+    dict(name="Sequoia Union High School District", key="sequoia_unified", base_url="https://www.seq.org/domain/84", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, supports_archives=True, notes="SUHSD facilities/bids page. URL may need adjustment if domain routing changes."),
+    dict(name="Pleasanton Unified School District", key="pleasanton_unified", base_url="https://www.pleasantonusd.net/departments/fiscal-services/purchasing/bids-and-rfps", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, supports_archives=True, notes="PUSD public bids and RFPs page."),
+    dict(name="East Side Union High School District", key="east_side_union", base_url="https://www.esuhsd.org/administration/departments/business-services/contracts-bids.html", platform_type="public_page", status="live", scrape_allowed=True, auth_required=False, supports_current_bids=True, supports_archives=True, notes="ESUHSD contracts and bids page."),
 ]
 
 
@@ -69,6 +75,24 @@ def get_connector(key: str, fixture: bool = False):
     if key == "vta":
         from app.connectors.vta import VtaConnector
         return VtaConnector()
+    if key == "san_jose":
+        from app.connectors.school_district import SanJoseConnector
+        return SanJoseConnector()
+    if key == "sfusd":
+        from app.connectors.school_district import SfUnifiedConnector
+        return SfUnifiedConnector()
+    if key == "berkeley_unified":
+        from app.connectors.school_district import BerkeleyUnifiedConnector
+        return BerkeleyUnifiedConnector()
+    if key == "sequoia_unified":
+        from app.connectors.school_district import SequoiaUnifiedConnector
+        return SequoiaUnifiedConnector()
+    if key == "pleasanton_unified":
+        from app.connectors.school_district import PleasantonUnifiedConnector
+        return PleasantonUnifiedConnector()
+    if key == "east_side_union":
+        from app.connectors.school_district import EastSideUnionConnector
+        return EastSideUnionConnector()
     return None
 
 
@@ -108,8 +132,12 @@ def upsert_project(db: Session, incoming: ProjectIn) -> tuple[Project, bool]:
         incoming.description or "",
         incoming.trade_scope_raw or "",
     )
+    combined = f"{incoming.project_name} {incoming.description or ''} {incoming.trade_scope_raw or ''}"
+    data = incoming.model_dump()
+    data["bid_type"] = data.get("bid_type") or infer_bid_type(combined)
+    data["project_type"] = data.get("project_type") or infer_project_type(combined)
     project = Project(
-        **incoming.model_dump(),
+        **data,
         relevance_score=score,
         relevance_reason=reason,
         last_checked_at=datetime.utcnow(),
