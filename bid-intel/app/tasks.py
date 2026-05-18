@@ -200,6 +200,7 @@ def fetch_source(db: Session, key: str, fixture: bool = False, archives: bool = 
     try:
         if archives:
             if hasattr(connector, "fetch_archived_with_results"):
+                from app.analytics import calculate_bid_deltas, calculate_project_analytics
                 pairs = connector.fetch_archived_with_results()
                 for proj_in, bid_results_in in pairs:
                     proj_in.source_id = source.id
@@ -208,7 +209,11 @@ def fetch_source(db: Session, key: str, fixture: bool = False, archives: bool = 
                         projects_added += 1
                     else:
                         projects_updated += 1
-                    results_added += save_bid_results(db, project, bid_results_in)
+                    n = save_bid_results(db, project, bid_results_in)
+                    results_added += n
+                    if n > 0:
+                        calculate_bid_deltas(db, project)
+                        calculate_project_analytics(db, project)
             else:
                 archived = connector.fetch_archived_projects()
                 for proj_in in archived:

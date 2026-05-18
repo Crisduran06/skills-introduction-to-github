@@ -267,10 +267,11 @@ async def archive_page(
     projects = q.order_by(Project.bid_due_date.desc().nulls_last()).limit(500).all()
 
     analytics_map: dict[int, ProjectBidAnalytics] = {}
-    for a in db.query(ProjectBidAnalytics).filter(
-        ProjectBidAnalytics.project_id.in_([p.id for p in projects])
-    ).all():
-        analytics_map[a.project_id] = a
+    if projects:
+        for a in db.query(ProjectBidAnalytics).filter(
+            ProjectBidAnalytics.project_id.in_([p.id for p in projects])
+        ).all():
+            analytics_map[a.project_id] = a
 
     agencies = [r[0] for r in db.query(Project.agency_owner).filter(
         (Project.is_archived == True) | (Project.status.in_(["awarded", "bid_opened"])),  # noqa: E712
@@ -397,7 +398,8 @@ async def api_fetch_all(db: Session = Depends(get_db)):
 @app.post("/api/fetch-archives")
 async def api_fetch_archives(db: Session = Depends(get_db)):
     results = fetch_all_archives(db, fixture=False)
-    return {"results": results}
+    calculated = calculate_all_analytics(db)
+    return {"results": results, "analytics_calculated": calculated}
 
 
 @app.post("/api/calculate-analytics")

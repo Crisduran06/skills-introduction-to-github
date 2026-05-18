@@ -131,19 +131,19 @@
           </td>
           <td style="white-space:nowrap">{{ (p.engineer_estimate or p.estimate_value) | currency }}</td>
           <td style="white-space:nowrap">
-            {% if a and a.low_bid_amount %}
+            {% if a and a.low_bid_amount is not none and a.low_bid_amount > 0 %}
             <span style="color:var(--green);font-weight:600">{{ a.low_bid_amount | currency }}</span>
             {% else %}—{% endif %}
           </td>
           <td style="white-space:nowrap">
-            {% if a and a.low_bid_vs_engineer_estimate_percent %}
+            {% if a and a.low_bid_vs_engineer_estimate_percent is not none %}
             <span class="{% if a.low_bid_vs_engineer_estimate_percent < 0 %}delta-neg{% elif a.low_bid_vs_engineer_estimate_percent > 10 %}delta-pos{% else %}delta-zero{% endif %}">
               {{ a.low_bid_vs_engineer_estimate_percent | pct }}
             </span>
             {% else %}—{% endif %}
           </td>
           <td style="text-align:center;color:var(--muted)">
-            {{ a.actual_bidders_count if a and a.actual_bidders_count else '—' }}
+            {% if a and a.actual_bidders_count is not none %}{{ a.actual_bidders_count }}{% else %}—{% endif %}
           </td>
           <td>
             <span class="badge badge-{{ p.status }}">{{ p.status.replace('_',' ') }}</span>
