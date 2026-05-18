@@ -87,10 +87,15 @@ def merge_project(existing: Project, incoming: ProjectIn) -> Project:
         else:
             existing.source_url = incoming.source_url
 
-    # Always allow progression: open → awarded/archived
-    if incoming.is_archived and not existing.is_archived:
+    # Only allow open→awarded/archived promotion when the bid date is in the past.
+    # Scrapers that fetch from "awards" URLs sometimes return all bids including
+    # open future-dated ones — don't let those get incorrectly promoted.
+    bid_date = existing.bid_due_date or incoming.bid_due_date
+    bid_is_past = bid_date is None or bid_date <= date.today()
+
+    if incoming.is_archived and not existing.is_archived and bid_is_past:
         existing.is_archived = True
-    if incoming.status in ("awarded", "bid_opened") and existing.status == "open":
+    if incoming.status in ("awarded", "bid_opened") and existing.status == "open" and bid_is_past:
         existing.status = incoming.status
 
     return existing

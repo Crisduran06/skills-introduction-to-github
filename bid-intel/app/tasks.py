@@ -127,6 +127,7 @@ def upsert_project(db: Session, incoming: ProjectIn) -> tuple[Project, bool]:
         db.flush()
         return existing, False
 
+    from datetime import date as _date
     score, reason = score_project(
         incoming.project_name,
         incoming.description or "",
@@ -136,6 +137,12 @@ def upsert_project(db: Session, incoming: ProjectIn) -> tuple[Project, bool]:
     data = incoming.model_dump()
     data["bid_type"] = data.get("bid_type") or infer_bid_type(combined)
     data["project_type"] = data.get("project_type") or infer_project_type(combined)
+    # Don't mark a brand-new project as archived/awarded if its bid date is in the future
+    bid_date = data.get("bid_due_date")
+    if bid_date and bid_date > _date.today():
+        data["is_archived"] = False
+        if data.get("status") == "awarded":
+            data["status"] = "open"
     project = Project(
         **data,
         relevance_score=score,
