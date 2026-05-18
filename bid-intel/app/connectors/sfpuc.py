@@ -109,6 +109,7 @@ def _parse_aspnet_table(soup: BeautifulSoup, source_url: str, base_url: str,
     idx_title = _col_idx("title", "project", "description", "name")
     idx_estimate = _col_idx("estimat", "cost", "amount", "value")
     idx_due = _col_idx("bid date", "due", "opening", "close", "date")
+    idx_posted = _col_idx("posted", "issued", "advertised", "publish", "listed", "release")
 
     for row in rows[1:]:
         cells = row.find_all("td")
@@ -153,6 +154,7 @@ def _parse_aspnet_table(soup: BeautifulSoup, source_url: str, base_url: str,
             contract_num = ""
         estimate_raw = cells[idx_estimate].get_text(strip=True) if idx_estimate is not None and idx_estimate < len(cells) else ""
         due_raw = cells[idx_due].get_text(strip=True) if idx_due is not None and idx_due < len(cells) else ""
+        posted_raw = cells[idx_posted].get_text(strip=True) if idx_posted is not None and idx_posted < len(cells) else ""
 
         if not due_raw:
             for cell in cells:
@@ -168,6 +170,7 @@ def _parse_aspnet_table(soup: BeautifulSoup, source_url: str, base_url: str,
             location_city=city,
             location_county=county,
             bid_due_date=_parse_date(due_raw),
+            posted_date=_parse_date(posted_raw) if posted_raw else None,
             engineer_estimate=_parse_money(estimate_raw),
             source_url=_abs_url(href, base_url) or source_url,
             status="awarded" if is_archived else "open",

@@ -32,6 +32,7 @@ class ProjectIn(BaseModel):
     location_city: Optional[str] = None
     location_county: Optional[str] = None
     bid_due_date: Optional[date] = None
+    posted_date: Optional[date] = None
     prebid_date: Optional[date] = None
     estimate_value: Optional[float] = None
     engineer_estimate: Optional[float] = None
@@ -61,6 +62,7 @@ class ProjectOut(BaseModel):
     location_city: Optional[str] = None
     location_county: Optional[str] = None
     bid_due_date: Optional[date] = None
+    posted_date: Optional[date] = None
     prebid_date: Optional[date] = None
     estimate_value: Optional[float] = None
     engineer_estimate: Optional[float] = None

@@ -48,6 +48,7 @@ def _migrate_db():
         ("projects", "project_type", "VARCHAR(100)"),
         ("projects", "construction_manager", "VARCHAR(255)"),
         ("projects", "architect", "VARCHAR(255)"),
+        ("projects", "posted_date", "DATE"),
     ]
     inspector = inspect(engine)
     for table, col, col_type in new_cols:

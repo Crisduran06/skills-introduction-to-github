@@ -94,6 +94,7 @@ class Project(Base):
     location_city: Mapped[Optional[str]] = mapped_column(String(255))
     location_county: Mapped[Optional[str]] = mapped_column(String(255))
     bid_due_date: Mapped[Optional[date]] = mapped_column(Date)
+    posted_date: Mapped[Optional[date]] = mapped_column(Date)
     prebid_date: Mapped[Optional[date]] = mapped_column(Date)
     estimate_value: Mapped[Optional[float]] = mapped_column(Float)
     engineer_estimate: Mapped[Optional[float]] = mapped_column(Float)

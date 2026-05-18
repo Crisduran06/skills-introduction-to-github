@@ -76,6 +76,7 @@
           <th>Project</th>
           <th>Agency</th>
           <th>Type</th>
+          <th>Posted</th>
           <th>Bid Due</th>
           <th>Estimate</th>
           <th>Status</th>
@@ -102,6 +103,9 @@
           <td style="white-space:nowrap">
             {% if p.bid_type %}<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--border);color:var(--muted);font-weight:600;letter-spacing:.3px;text-transform:uppercase">{{ p.bid_type.replace('_',' ') }}</span>{% endif %}
             {% if p.project_type %}<div style="font-size:10px;color:var(--muted);margin-top:2px">{{ p.project_type.replace('_',' ').replace('k12','K-12') }}</div>{% endif %}
+          </td>
+          <td style="white-space:nowrap;color:var(--muted);font-size:12px">
+            {{ p.posted_date.strftime('%m/%d/%y') if p.posted_date else '—' }}
           </td>
           <td style="white-space:nowrap">
             {% if p.bid_due_date %}

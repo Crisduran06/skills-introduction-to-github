@@ -26,6 +26,7 @@
       <tr><td style="color:var(--muted);width:160px;padding:5px 0">Agency / Owner</td><td>{{ project.agency_owner or '—' }}</td></tr>
       <tr><td style="color:var(--muted);padding:5px 0">City</td><td>{{ project.location_city or '—' }}</td></tr>
       <tr><td style="color:var(--muted);padding:5px 0">County</td><td>{{ project.location_county or '—' }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0">Posted</td><td>{{ project.posted_date.strftime('%B %d, %Y') if project.posted_date else '—' }}</td></tr>
       <tr><td style="color:var(--muted);padding:5px 0">Bid Due Date</td><td>{{ project.bid_due_date or '—' }}</td></tr>
       <tr><td style="color:var(--muted);padding:5px 0">Pre-Bid Date</td><td>{{ project.prebid_date or '—' }}</td></tr>
       <tr><td style="color:var(--muted);padding:5px 0">Engineer's Estimate</td><td style="font-weight:600">{{ project.engineer_estimate | currency }}</td></tr>

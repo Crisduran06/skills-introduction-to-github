@@ -99,6 +99,7 @@ def _parse_bids_page(
         idx_title = _col("title", "project", "description", "name", "solicitation", "rfp", "rfq", "bid", "contract")
         idx_num = _col("contract", "solicitation", "number", "bid no", "spec")
         idx_due = _col("due", "close", "opening", "date", "award")
+        idx_posted = _col("posted", "issued", "advertised", "publish", "listed", "release", "open date")
 
         for row in rows[1:]:
             cells = row.find_all("td")
@@ -132,12 +133,15 @@ def _parse_bids_page(
             if not due_raw:
                 m2 = re.search(r"\d{1,2}/\d{1,2}/\d{2,4}", row_text)
                 due_raw = m2.group(0) if m2 else ""
+            posted_raw = cells[idx_posted].get_text(strip=True) if idx_posted is not None and idx_posted < len(cells) else ""
             p = _make(title, href, row_text)
             if p:
                 if contract_num:
                     p.external_id = contract_num
                 if due_raw:
                     p.bid_due_date = _parse_date(due_raw)
+                if posted_raw:
+                    p.posted_date = _parse_date(posted_raw)
                 projects.append(p)
         if projects:
             return projects

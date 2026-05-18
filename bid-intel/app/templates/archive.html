@@ -96,6 +96,7 @@
           <th>Score</th>
           <th>Project</th>
           <th>Agency</th>
+          <th>Posted</th>
           <th>Bid Date</th>
           <th>Eng. Estimate</th>
           <th>Low Bid</th>
@@ -122,6 +123,9 @@
             {% endif %}
           </td>
           <td style="color:var(--muted);white-space:nowrap">{{ p.agency_owner or '—' }}</td>
+          <td style="white-space:nowrap;color:var(--muted);font-size:12px">
+            {{ p.posted_date.strftime('%m/%d/%y') if p.posted_date else '—' }}
+          </td>
           <td style="white-space:nowrap;color:var(--muted)">
             {{ p.bid_due_date.strftime('%m/%d/%y') if p.bid_due_date else '—' }}
           </td>

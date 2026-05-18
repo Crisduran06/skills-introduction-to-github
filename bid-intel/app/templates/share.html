@@ -212,8 +212,8 @@
     <h2>Project Details</h2>
     <table class="detail-table">
       <tr>
-        <td>Listed</td>
-        <td>{{ project.created_at.strftime('%B %d, %Y') if project.created_at else '—' }}</td>
+        <td>Posted</td>
+        <td>{{ project.posted_date.strftime('%B %d, %Y') if project.posted_date else (project.created_at.strftime('%B %d, %Y') if project.created_at else '—') }}</td>
       </tr>
       {% if project.prebid_date %}
       <tr>

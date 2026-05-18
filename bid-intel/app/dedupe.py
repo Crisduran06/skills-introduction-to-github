@@ -54,6 +54,8 @@ def merge_project(existing: Project, incoming: ProjectIn) -> Project:
         existing.engineer_estimate = incoming.engineer_estimate
     if not existing.bid_due_date and incoming.bid_due_date:
         existing.bid_due_date = incoming.bid_due_date
+    if not existing.posted_date and incoming.posted_date:
+        existing.posted_date = incoming.posted_date
     if not existing.prebid_date and incoming.prebid_date:
         existing.prebid_date = incoming.prebid_date
     if not existing.location_city and incoming.location_city:
